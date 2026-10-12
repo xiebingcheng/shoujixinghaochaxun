@@ -16,6 +16,7 @@
   const PREFIX_LABEL = { S: "S 开头", L: "L 开头", Y: "Y 开头" };
   const EXAMPLES = ["Mate30Pro", "X60Pro", "苹果13", "红米K80", "S01"];
   const FUZZY_LIMIT = 40;
+  const SUB_LIMIT = 8;
 
   const state = {
     index: null,
@@ -119,19 +120,49 @@
   function subsHTML(box) {
     const subs = box.subs || [];
     if (!subs.length) return "";
-    const chips = subs.map((id) => {
+    const links = subs.map((id) => {
       const target = state.boxById && state.boxById.get(id);
       const name = target && target.name ? esc(target.name) : "";
       const title = name ? `${id} ${target.name}` : id;
-      return `<button class="sub-chip" type="button" data-sub="${esc(id)}" title="${esc(title)}">` +
+      return `<button class="sub-link" type="button" data-sub="${esc(id)}" title="${esc(title)}">` +
         `<span class="sub-id">${esc(id)}</span>` +
         (name ? `<span class="sub-name">${name}</span>` : "") +
         "</button>";
     }).join("");
     return '<div class="subs">' +
       '<span class="subs-label" title="本箱缺货时，可以用这些箱号里的机型替代">可替代箱号</span>' +
-      chips +
+      links +
       "</div>";
+  }
+
+  /** 搜索结果里单独列出的“可替代箱号”卡片 */
+  function subCard(box, froms) {
+    const limited = Math.min(box.models.length, state.expanded.has(box.id) ? 99 : 8);
+    const lines = box.models.slice(0, limited).map((m) => {
+      const alt = (m.alt || []).length
+        ? ` <span class="alt">（另一写法：${esc(m.alt.join("、"))}）</span>`
+        : "";
+      return `<li>${esc(m.t)}${alt}</li>`;
+    }).join("");
+    const more = box.models.length > limited
+      ? `<button class="more" data-more="${esc(box.id)}" type="button">展开其余 ${box.models.length - limited} 个型号</button>`
+      : "";
+    const fromText = froms.map((f) => `${esc(f.id)}（${esc(f.name || "未命名箱")}）`).join("、");
+    const name = box.name ? esc(box.name) : "未命名箱";
+    return `
+      <article class="card card-sub" data-id="${esc(box.id)}">
+        ${badge(box, false)}
+        <div class="card-body">
+          <div class="card-head">
+            <span class="card-name">${name}</span>
+            <span class="tag sub">可替代</span>
+          </div>
+          <div class="card-sub-note">可以替代 ${fromText}里的机型</div>
+          <ul class="hits">${lines}</ul>
+          ${more}
+          <div class="card-meta">箱号 ${esc(box.id)} · 箱内共 ${box.total} 个型号</div>
+        </div>
+      </article>`;
   }
 
   function resultCard(result, tokens) {
@@ -222,22 +253,47 @@
       return;
     }
 
-    summaryEl.innerHTML = exact.length
+    const shownFuzzy = fuzzy.slice(0, FUZZY_LIMIT);
+
+    // 本次结果里出现的“可替代箱号”：前面的箱子缺货时，可以用它里面的机型顶上
+    const subFroms = new Map(); // 可替代箱号 -> [被它替代的箱子…]
+    for (const r of exact.concat(shownFuzzy)) {
+      for (const id of r.box.subs || []) {
+        const list = subFroms.get(id) || [];
+        if (!list.includes(r.box)) list.push(r.box);
+        subFroms.set(id, list);
+      }
+    }
+    const subBoxes = Array.from(subFroms.keys())
+      .map((id) => state.boxById && state.boxById.get(id))
+      .filter(Boolean);
+    const shownSubs = subBoxes.slice(0, SUB_LIMIT);
+
+    let summary = exact.length
       ? `找到 <b>${exact.length}</b> 个箱号包含「${esc(res.query.trim())}」` +
         (fuzzy.length ? `，另有 <b>${fuzzy.length}</b> 个相近结果` : "")
       : `没有完全匹配，以下是 <b>${fuzzy.length}</b> 个相近结果`;
+    if (subBoxes.length) summary += `，可替代箱号 <b>${subBoxes.length}</b> 个`;
+    summaryEl.innerHTML = summary;
 
     let html = "";
     if (exact.length) {
       html += `<h2 class="group-title">精确匹配（${exact.length}）</h2>`;
       html += exact.map((r) => resultCard(r, tokens)).join("");
     }
+    if (shownSubs.length) {
+      html += `<h2 class="group-title">可替代箱号（${shownSubs.length}）</h2>`;
+      html += shownSubs.map((b) => subCard(b, subFroms.get(b.id))).join("");
+      if (subBoxes.length > shownSubs.length) {
+        html += `<p class="list-note">还有 ${subBoxes.length - shownSubs.length} 个可替代箱号，` +
+          `把型号写完整一点就能看到。</p>`;
+      }
+    }
     if (fuzzy.length) {
       html += `<h2 class="group-title">相近结果（${fuzzy.length}）</h2>`;
-      const shown = fuzzy.slice(0, FUZZY_LIMIT);
-      html += shown.map((r) => resultCard(r, tokens)).join("");
-      if (fuzzy.length > shown.length) {
-        html += `<p class="list-note">相近结果较多，只显示前 ${shown.length} 个，` +
+      html += shownFuzzy.map((r) => resultCard(r, tokens)).join("");
+      if (fuzzy.length > shownFuzzy.length) {
+        html += `<p class="list-note">相近结果较多，只显示前 ${shownFuzzy.length} 个，` +
           `再补充几个字符可以缩小范围。</p>`;
       }
     }

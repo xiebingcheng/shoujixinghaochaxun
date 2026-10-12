@@ -44,10 +44,16 @@ const logs = [];
   // 4.5 箱号替代关系
   await page.fill("#q", "红米K80");
   await page.waitForTimeout(350);
-  const s49 = page.locator('#results .card[data-id="S49"]');
+  const s49 = page.locator('#results .card:not(.card-sub)[data-id="S49"]');
   console.log("搜「红米K80」时 S49 的替代标签:", JSON.stringify(await s49.locator(".subs-label").allTextContents()));
-  console.log("  S49 可替代箱号:", JSON.stringify(await s49.locator(".sub-chip").allTextContents()));
-  await s49.locator(".sub-chip").first().click();
+  console.log("  S49 卡片上的可替代箱号:", JSON.stringify(await s49.locator(".sub-link").allTextContents()));
+  console.log("  分组标题:", await page.locator("#results .group-title").allTextContents());
+  const subCard = page.locator("#results .card-sub");
+  console.log("  可替代卡片数:", await subCard.count(),
+    "| 标记:", JSON.stringify(await page.locator("#results .tag.sub").allTextContents()),
+    "| 说明:", JSON.stringify((await page.locator(".card-sub-note").allTextContents()).map((t) => t.trim())));
+  console.log("  摘要:", await page.textContent("#summary"));
+  await s49.locator(".sub-link").first().click();
   await page.waitForTimeout(400);
   console.log("  点替代标签后输入框:", await page.inputValue("#q"), "| 摘要:", await page.textContent("#summary"));
   console.log("  URL:", page.url());
@@ -55,11 +61,19 @@ const logs = [];
 
   await page.fill("#q", "S61");
   await page.waitForTimeout(350);
-  console.log("搜「S61」可替代箱号:", JSON.stringify(await page.locator('#results .card[data-id="S61"] .sub-chip').allTextContents()));
+  console.log("搜「S61」可替代箱号:", JSON.stringify(await page.locator('#results .card-sub[data-id="S58"] .card-sub-note').allTextContents()));
+
+  // 同一个可替代箱号被两个箱子指向时，说明里要都写出来
+  await page.fill("#q", "K15PRO+");
+  await page.waitForTimeout(350);
+  console.log("搜「K15PRO+」→ 分组标题:", await page.locator("#results .group-title").allTextContents(),
+    "| S58 卡片说明:",
+    JSON.stringify(await page.locator('#results .card-sub[data-id="S58"] .card-sub-note').allTextContents()));
 
   await page.fill("#q", "");
   await page.waitForTimeout(350);
-  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-chip)").count(), "(应为 15)");
+  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-link)").count(), "(应为 15)");
+  console.log("  浏览视图里没有可替代分组:", await page.locator("#results .card-sub").count(), "(应为 0)");
 
   // 5. 320px 窄屏截图
   const narrow = await browser.newPage({ viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true });
