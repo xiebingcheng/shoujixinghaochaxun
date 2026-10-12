@@ -182,6 +182,11 @@
   function renderSearch() {
     const res = state.result;
     const tokens = String(inputEl.value).trim().split(/\s+/).filter(Boolean);
+    if (res.q.length < 2) {
+      summaryEl.textContent = "继续输入型号或箱号…";
+      resultsEl.innerHTML = emptyHTML("再多输入一点", "至少输入 2 个字符，例如 X60Pro、红米K80、S01");
+      return;
+    }
     let exact = visibleBoxes(res.exact);
     let fuzzy = visibleBoxes(res.fuzzy);
 
