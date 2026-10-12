@@ -105,7 +105,7 @@ const logs = [];
 
   await page.fill("#q", "");
   await page.waitForTimeout(350);
-  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-link)").count(), "(应为 16)");
+  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-link)").count(), "(应为 18)");
   console.log("  浏览视图里没有可替代分组:", await page.locator("#results .card-sub").count(), "(应为 0)");
 
   // 5. 320px 窄屏截图
