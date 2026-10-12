@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>手机型号查箱号</title>
+  <meta name="description" content="输入手机型号，快速查出对应的 S / L / Y 箱号">
+  <meta name="theme-color" content="#11456f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="查箱号">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/favicon.svg">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="app-header" id="header">
+    <div class="header-inner">
+      <h1 class="app-title">手机型号查箱号</h1>
+      <p class="app-sub">输入手机型号或箱号，查出所在箱子</p>
+      <form class="search" id="search-form" role="search">
+        <input id="q" class="search-input" type="search" name="q" inputmode="search"
+               enterkeyhint="search" placeholder="手机型号或箱号，如 Mate30Pro、S01"
+               autocomplete="off" autocapitalize="off" spellcheck="false"
+               aria-label="手机型号或箱号">
+        <button class="search-btn" type="submit" aria-label="查询">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14"/></svg>
+        </button>
+      </form>
+      <nav class="tabs" id="tabs" aria-label="箱号前缀筛选"></nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <p class="summary" id="summary"></p>
+    <div class="results" id="results"></div>
+  </main>
+
+  <button class="to-top" id="to-top" type="button" aria-label="回到顶部">↑</button>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <footer class="footer">
+    <div>点卡片可复制箱号 · 数据来自两份人工统计表交叉核对</div>
+    <div id="gen"></div>
+  </footer>
+
+  <script src="assets/search.js" defer></script>
+  <script src="assets/app.js" defer></script>
+</body>
+</html>

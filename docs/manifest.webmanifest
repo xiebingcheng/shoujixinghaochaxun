@@ -1,0 +1,16 @@
+{
+  "name": "手机型号查箱号",
+  "short_name": "查箱号",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#eef3f8",
+  "theme_color": "#11456f",
+  "icons": [
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
