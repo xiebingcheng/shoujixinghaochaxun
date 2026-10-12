@@ -31,6 +31,7 @@ FILES = {
 }
 
 PREFIX_ORDER = {"S": 0, "L": 1, "Y": 2}
+CORRECTIONS_PATH = os.path.join(DATA_DIR, "核实修正表.json")
 
 # ---------------------------------------------------------------- 文本规范化
 BRAND_ALIASES = [
@@ -234,6 +235,48 @@ def main():
             "id": bid, "prefix": b["prefix"], "name": b["name"], "models": models,
         })
 
+    # ------------------------------------------------------- 应用人工核实结论
+    corrections = {}
+    if os.path.exists(CORRECTIONS_PATH):
+        with open(CORRECTIONS_PATH, encoding="utf-8") as f:
+            corrections = json.load(f)
+    logs = []
+    by_id = {b["id"]: b for b in out_boxes}
+    for bid, rule in corrections.get("boxes", {}).items():
+        box = by_id.get(bid)
+        if box is None:
+            logs.append(f"{bid}: 数据里没有这个箱号（已跳过）")
+            continue
+        if rule.get("asis"):
+            continue
+        models = box["models"]
+        n_del = n_add = n_fix = 0
+        for text in rule.get("remove", []):
+            key = norm(text)
+            hit = [m for m in models if m["k"] == key]
+            if not hit:
+                logs.append(f"{bid}: 要删除的「{text}」在数据里没找到")
+                continue
+            for m in hit:
+                models.remove(m)
+                n_del += 1
+        for text in rule.get("keep", []):
+            key = norm(text)
+            hit = [m for m in models if m["k"] == key]
+            if hit:
+                for m in hit:
+                    if m["t"] != text:
+                        n_fix += 1
+                    m["t"] = text
+                    m["v"] = "fixed"
+                    m.pop("alt", None)
+            else:
+                models.append({"t": text, "k": key, "c": core(text), "v": "fixed"})
+                n_add += 1
+        models.sort(key=lambda x: (0 if x["v"] in ("both", "fixed") else 1, x["k"]))
+        if n_del or n_add or n_fix:
+            logs.append(f"{bid}: 删除 {n_del} 条 / 新增 {n_add} 条 / 纠正写法 {n_fix} 条")
+
     os.makedirs(OUT_DIR, exist_ok=True)
     payload = {
         "generatedAt": __import__("datetime").date.today().isoformat(),
@@ -241,6 +284,7 @@ def main():
             "boxes": len(out_boxes),
             "models": sum(len(b["models"]) for b in out_boxes),
             "confirmed": sum(1 for b in out_boxes for m in b["models"] if m["v"] == "both"),
+            "fixed": sum(1 for b in out_boxes for m in b["models"] if m["v"] == "fixed"),
         },
         "boxes": out_boxes,
     }
@@ -250,7 +294,11 @@ def main():
     size = os.path.getsize(out_path)
     print(f"[OK] {out_path}  ({size/1024:.1f} KB)")
     print(f"     箱号 {payload['counts']['boxes']} 个，型号条目 {payload['counts']['models']} 条，"
-          f"两人确认 {payload['counts']['confirmed']} 条")
+          f"两人确认 {payload['counts']['confirmed']} 条，按核实报告修正 {payload['counts']['fixed']} 条")
+    if logs:
+        print("[核实修正表] 应用结果：")
+        for line in logs:
+            print("   - " + line)
 
     # ------------------------------------------------------------ 核对报告
     lines = ["# 数据核对报告（d 版 vs q 版）", "",

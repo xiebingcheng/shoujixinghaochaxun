@@ -112,7 +112,7 @@
   function sourceTag(hits) {
     if (!hits.length) return "";
     // “两人已核对”不再展示，只保留“这份型号只有一份表格有”的待核对提示
-    const verified = hits.every((h) => h.m.v === "both");
+    const verified = hits.every((h) => h.m.v === "both" || h.m.v === "fixed");
     return verified ? "" : '<span class="tag pending">待核对</span>';
   }
 

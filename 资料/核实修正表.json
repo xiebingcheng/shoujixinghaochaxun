@@ -1,0 +1,94 @@
+{
+  "说明": "两人核对后的最终结论。keep=这一条必须存在（以这里的写法为准，自动纠正错别字/合并行）；remove=这一条要从数据里删掉；asis=true 表示该箱号两份表格的差异保持原样不处理。数据来源：核实后的修复报告。",
+  "生成时间": "2026-10-12",
+  "boxes": {
+    "S16": {
+      "keep": ["Y72INDIA", "荣耀畅玩40S", "红米9C", "华为畅玩30M", "华为优畅享30E", "荣耀畅玩50M"],
+      "remove": ["红米9C荣耀畅玩40S"]
+    },
+    "S17": {
+      "keep": ["Nova7SE(顶上有呼吸灯往下贴一点)"],
+      "remove": ["Nova7SE(上有呼吸灯往下贴一点)"]
+    },
+    "S18": { "keep": ["荣耀畅玩20Pro", "荣耀Play5"] },
+    "S24": { "keep": ["真我2Pro"] },
+    "S31": { "remove": ["荣耀X30i"] },
+    "S33": {
+      "keep": ["真我7I", "红米K40游戏版增强版", "黑鲨6R", "黑鲨4SGUNDAM", "红米K50Pro至尊版", "红米Note11 5G"]
+    },
+    "S34": { "keep": ["Y200I", "真我NEO7SE", "一加TURBO6X", "畅享90"] },
+    "S38": {
+      "keep": ["红米K30Pro", "荣耀X30i", "红米NOTE11PRO+"],
+      "remove": ["红米NOTE11EPRO+"]
+    },
+    "S48": { "keep": ["荣耀GTPRO"] },
+    "S56": { "keep": ["小米17TPRO"] },
+    "S61": { "keep": ["一加AE6至尊"] },
+    "S63": { "keep": ["S50T"] },
+    "S65": { "keep": ["Y500S"] },
+    "S73": { "keep": ["红米NOTE15R"] },
+    "L03": {
+      "keep": ["小米 Civi2", "小米 Civi3", "华为P90Pro"],
+      "remove": ["小米CIV12", "小米CIV13"]
+    },
+    "L05": { "remove": ["红米 Note15Pro"] },
+    "L07": {
+      "keep": ["OPPO A6SPro", "S50", "P50", "荣耀 600Lite", "P50E", "华为 Nova6SE", "X27", "MAGIC8", "iPhone17 Air"],
+      "remove": ["荣耀600Lite P50 P50E", "华为Nova6SE X27", "荣耀600Pro MAGIC8 iPhone17 Air"]
+    },
+    "L08": {
+      "keep": ["红米Note 9Pro 4G", "真我V5", "真我 Q2NARNO30 Pro", "红米Note12T Pro小板", "华为Nova7SE"],
+      "remove": ["红米 Note9 4G", "真我 Q3s", "真我 Q2NAR30Pro", "红米 Note12T Pro小版", "华为 Nova75E", "红米Note12T Pro/小板"]
+    },
+    "L09": { "keep": ["红米Note11 Pro"] },
+    "L10": {
+      "keep": ["IQOO5Pro", "iPhone15 Plus"],
+      "remove": ["IQOO5Pro iPhone15 Plus"]
+    },
+    "L13": {
+      "keep": ["vivo X300S", "畅玩60m", "荣耀 Magic7"],
+      "remove": ["vivo X300S 畅玩60m"]
+    },
+    "L14": { "keep": ["Hi 华为Nova12SE", "Hi 华为Nova9Z", "华为Nova9Z"] },
+    "L15": {
+      "keep": ["荣耀Magic5 (不用定位器)"],
+      "remove": ["荣耀Magic5 (不用定位置)"]
+    },
+    "L17": {
+      "keep": ["Hi 华为Nova9SE", "真我V70", "畅享80", "Hi畅享80Plus", "畅享90", "畅享90Plus", "vivo Z6", "畅享20SE", "红米Note12Pro+", "IQOO ENO8", "IQOO ENO8Pro", "IQOO NEI5SE", "OPPO A1S 5G"],
+      "remove": ["IQOO EN08", "IQOO NE5SE", "IQOO EN08Pro", "OPPO A15 5G", "真我V70 畅享80", "Hi畅享80Plus 畅享90 畅享90Plus", "vivo Z6 畅享20SE"]
+    },
+    "L18": {
+      "keep": ["OPPO Findx8Pro (不带定位框使用)", "IQOO Neo11", "K13S"],
+      "remove": ["OPPO Findx8Pro (不带定位器使用)", "IQOO Neo11 K13S"]
+    },
+    "L20": {
+      "keep": ["中兴Blade20Pro", "iPhone15ProMax"],
+      "remove": ["中兴Blade20Pro   iPhone15ProMax"]
+    },
+    "Y01": {
+      "keep": ["vivo Z5I", "vivo Y70S", "vivo Y70T", "小米11i 5G", "vivo Y5S", "真我12Pro", "荣耀200Pro"],
+      "remove": ["小米11 5G", "vivo Z5l"]
+    },
+    "Y05": { "keep": ["华为 P50ProPlus"] },
+    "Y06": {
+      "keep": ["华为 Mate30Pro+"],
+      "remove": ["华为 MateMate30Pro+"]
+    },
+    "Y09": {
+      "keep": ["OPPO FindX"],
+      "remove": ["OPPP FindX"]
+    },
+    "Y11": { "keep": ["荣耀 Magic6", "魔术6"] },
+    "Y13": {
+      "keep": ["华为 MateX7", "折叠屏前屏"],
+      "remove": ["华为 MateX7 折叠屏前屏"]
+    },
+    "Y10": { "asis": true },
+    "Y14": { "asis": true },
+    "Y15": { "asis": true },
+    "Y16": { "asis": true },
+    "Y17": { "asis": true },
+    "Y18": { "asis": true }
+  }
+}
