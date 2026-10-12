@@ -494,12 +494,25 @@
     if (!formEl.contains(e.target)) closeSuggest();
   });
 
-  formEl.addEventListener("submit", (e) => {
-    e.preventDefault();
-    closeSuggest();   // 点放大镜（或回车提交）时先收起联想下拉，别挡住结果
+  /** 立即查询：收起联想下拉 → 收键盘 → 马上搜（下拉不能挡在结果上面） */
+  let lastSubmit = 0;
+  function submitNow() {
+    const now = Date.now();
+    if (now - lastSubmit < 300) return;   // 同一次点按可能触发两遍，第二次忽略
+    lastSubmit = now;
+    closeSuggest();
     inputEl.blur();
     clearTimeout(timer);
     runSearch();
+  }
+
+  // 手机上点放大镜时，有的浏览器第一次点按只会先收起键盘、不派发 click/submit，
+  // 于是下拉框留在原地。这里改成按下手指就查一次（后面真来了 click/submit 会被去重挡掉）。
+  const searchBtn = $(".search-btn");
+  if (window.PointerEvent) searchBtn.addEventListener("pointerdown", submitNow);
+  formEl.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitNow();
   });
 
   tabsEl.addEventListener("click", (e) => {

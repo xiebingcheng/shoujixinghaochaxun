@@ -161,6 +161,20 @@ const logs = [];
     "| 结果卡片数:", await page.locator("#results .card").count(),
     "| 摘要:", (await page.textContent("#summary")).trim());
 
+  // 有的手机第一次点按只会先收起键盘、不派发 click：只发 pointerdown 也必须能查、能收下拉
+  await page.fill("#q", "");
+  await page.click("#q");
+  await page.type("#q", "OPPO A11", { delay: 30 });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    document.querySelector(".search-btn").dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true, cancelable: true, pointerType: "touch", isPrimary: true })
+    );
+  });
+  await page.waitForTimeout(400);
+  console.log("只发 pointerdown（无 click）时 下拉可见:", await page.locator("#suggest").isVisible(), "(应为 false)",
+    "| 摘要:", (await page.textContent("#summary")).trim());
+
   // 7. 头部滚动折叠：连续下滚只该收起一次，而且折叠不能改变文档高度
   //    （一改高度就会被浏览器的滚动锚定拽回去，头部在展开／收起之间来回弹）
   await page.fill("#q", "");
