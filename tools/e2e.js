@@ -149,6 +149,18 @@ const logs = [];
   console.log("点击选中后输入框:", await page.inputValue("#q"), "| 摘要:", await page.textContent("#summary"));
   console.log("下拉是否关闭:", await page.locator("#suggest").isHidden());
 
+  // 6.5 点放大镜：要搜出结果，而且联想下拉必须收起，不能挡住结果
+  await page.fill("#q", "");
+  await page.click("#q");
+  await page.type("#q", "reno15pro", { delay: 30 });
+  await page.waitForTimeout(400);
+  console.log("点放大镜前下拉可见:", await page.locator("#suggest").isVisible(), "(应为 true)");
+  await page.click(".search-btn");
+  await page.waitForTimeout(400);
+  console.log("点放大镜后下拉可见:", await page.locator("#suggest").isVisible(), "(应为 false)",
+    "| 结果卡片数:", await page.locator("#results .card").count(),
+    "| 摘要:", (await page.textContent("#summary")).trim());
+
   // 7. 头部滚动折叠：连续下滚只该收起一次，而且折叠不能改变文档高度
   //    （一改高度就会被浏览器的滚动锚定拽回去，头部在展开／收起之间来回弹）
   await page.fill("#q", "");

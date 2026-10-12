@@ -496,6 +496,7 @@
 
   formEl.addEventListener("submit", (e) => {
     e.preventDefault();
+    closeSuggest();   // 点放大镜（或回车提交）时先收起联想下拉，别挡住结果
     inputEl.blur();
     clearTimeout(timer);
     runSearch();
