@@ -19,6 +19,7 @@
 
   const state = {
     index: null,
+    boxById: null,
     suggestList: [],
     prefix: "ALL",
     result: null,
@@ -115,6 +116,25 @@
       : '<span class="tag pending">待核对</span>';
   }
 
+  /** 本箱缺货时可以拿来替代的箱号（数据来自 data/substitutes.json） */
+  function subsHTML(box) {
+    const subs = box.subs || [];
+    if (!subs.length) return "";
+    const chips = subs.map((id) => {
+      const target = state.boxById && state.boxById.get(id);
+      const name = target && target.name ? esc(target.name) : "";
+      const title = name ? `${id} ${target.name}` : id;
+      return `<button class="sub-chip" type="button" data-sub="${esc(id)}" title="${esc(title)}">` +
+        `<span class="sub-id">${esc(id)}</span>` +
+        (name ? `<span class="sub-name">${name}</span>` : "") +
+        "</button>";
+    }).join("");
+    return '<div class="subs">' +
+      '<span class="subs-label" title="本箱缺货时，可以用这些箱号里的机型替代">可替代箱号</span>' +
+      chips +
+      "</div>";
+  }
+
   function resultCard(result, tokens) {
     const box = result.box;
     const limited = Math.min(result.hits.length, state.expanded.has(box.id) ? 99 : 8);
@@ -141,6 +161,7 @@
           <ul class="hits">${lines}</ul>
           ${more}
           <div class="card-meta">箱号 ${esc(box.id)} · 箱内共 ${box.total} 个型号</div>
+          ${subsHTML(box)}
         </div>
       </article>`;
   }
@@ -158,6 +179,7 @@
         <div class="card-body">
           <div class="card-head"><span class="card-name">${name}</span></div>
           ${body}
+          ${subsHTML(box)}
         </div>
       </article>`;
   }
@@ -370,6 +392,15 @@
   });
 
   resultsEl.addEventListener("click", (e) => {
+    const sub = e.target.closest("[data-sub]");
+    if (sub) {
+      inputEl.value = sub.dataset.sub;
+      closeSuggest();
+      clearTimeout(timer);
+      runSearch();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     const more = e.target.closest("[data-more]");
     if (more) {
       state.expanded.add(more.dataset.more);
@@ -430,7 +461,17 @@
       }
       return;
     }
-    state.index = window.BoxSearch.makeIndex(data);
+    // 箱号替代关系是单独一个文件，缺失时整站照常可用
+    let subs = null;
+    try {
+      const subResp = await fetch("data/substitutes.json", { cache: "no-cache" });
+      if (subResp.ok) subs = await subResp.json();
+      else console.warn("替代关系数据加载失败：HTTP " + subResp.status);
+    } catch (err) {
+      console.warn("替代关系数据加载失败，跳过", err);
+    }
+    state.index = window.BoxSearch.makeIndex(data, subs);
+    state.boxById = new Map(state.index.boxes.map((b) => [b.id, b]));
     state.suggestList = window.BoxSearch.buildSuggestions(state.index.boxes);
     buildTabs();
     const initial = new URLSearchParams(location.search).get("q");

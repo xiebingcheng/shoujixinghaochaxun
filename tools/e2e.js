@@ -41,6 +41,26 @@ const logs = [];
   await page.waitForTimeout(300);
   console.log("单字查询:", await page.textContent("#summary"));
 
+  // 4.5 箱号替代关系
+  await page.fill("#q", "红米K80");
+  await page.waitForTimeout(350);
+  const s49 = page.locator('#results .card[data-id="S49"]');
+  console.log("搜「红米K80」时 S49 的替代标签:", JSON.stringify(await s49.locator(".subs-label").allTextContents()));
+  console.log("  S49 可替代箱号:", JSON.stringify(await s49.locator(".sub-chip").allTextContents()));
+  await s49.locator(".sub-chip").first().click();
+  await page.waitForTimeout(400);
+  console.log("  点替代标签后输入框:", await page.inputValue("#q"), "| 摘要:", await page.textContent("#summary"));
+  console.log("  URL:", page.url());
+  await page.screenshot({ path: out("shot-subs.png") });
+
+  await page.fill("#q", "S61");
+  await page.waitForTimeout(350);
+  console.log("搜「S61」可替代箱号:", JSON.stringify(await page.locator('#results .card[data-id="S61"] .sub-chip').allTextContents()));
+
+  await page.fill("#q", "");
+  await page.waitForTimeout(350);
+  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-chip)").count(), "(应为 15)");
+
   // 5. 320px 窄屏截图
   const narrow = await browser.newPage({ viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true });
   await narrow.goto(BASE + "?q=" + encodeURIComponent("X60Pro"), { waitUntil: "networkidle" });

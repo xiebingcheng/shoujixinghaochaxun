@@ -48,6 +48,10 @@
 
   const PREFIX_ORDER = { S: 0, L: 1, Y: 2 };
 
+  const BOX_ID_RE = /^[A-Z]\d{1,3}$/;
+  // 替代关系写成「S49-S33」这种一条一条的文本，允许 - － — – ~ ～ → , ， 、 ; ； / ／ | 分隔
+  const SUB_SPLIT_RE = /[-－—–~～→>,，、;；/／|]+/;
+
   function norm(text) {
     let s = String(text == null ? "" : text).normalize("NFKC").toLowerCase();
     s = s.replace(/＋|﹢/g, "+");
@@ -72,8 +76,35 @@
     return s;
   }
 
-  /** 预计算索引：给每个箱号补上规范化字段 */
-  function makeIndex(data) {
+  /**
+   * 解析 docs/data/substitutes.json 里的箱号替代关系。
+   * 支持两种写法：
+   *   { note: "…", pairs: ["S49-S33", …] }   或   ["S49-S33", ["S49", "S33"], …]
+   * 返回 Map：前箱号 -> [可替代箱号…]
+   */
+  function parseSubstitutes(raw) {
+    const list = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.pairs) ? raw.pairs : []);
+    const map = new Map();
+    for (const item of list) {
+      if (item == null) continue;
+      const parts = (Array.isArray(item) ? item : String(item).split(SUB_SPLIT_RE))
+        .map((s) => String(s == null ? "" : s).trim().toUpperCase())
+        .filter(Boolean);
+      if (parts.length < 2) continue;
+      const front = parts[0];
+      if (!BOX_ID_RE.test(front)) continue;
+      const backs = map.get(front) || [];
+      for (const back of parts.slice(1)) {
+        if (BOX_ID_RE.test(back) && back !== front && !backs.includes(back)) backs.push(back);
+      }
+      if (backs.length) map.set(front, backs);
+    }
+    return map;
+  }
+
+  /** 预计算索引：给每个箱号补上规范化字段、可替代箱号 */
+  function makeIndex(data, substitutes) {
+    const subMap = substitutes instanceof Map ? substitutes : parseSubstitutes(substitutes);
     const boxes = data.boxes.map((box) => ({
       id: box.id,
       prefix: box.prefix,
@@ -95,7 +126,21 @@
         (PREFIX_ORDER[a.prefix] ?? 9) - (PREFIX_ORDER[b.prefix] ?? 9) ||
         codeNum(a.id) - codeNum(b.id)
     );
-    return { boxes, counts: data.counts || {}, generatedAt: data.generatedAt || "" };
+    const byId = new Map(boxes.map((b) => [b.id, b]));
+    for (const box of boxes) box.subs = (subMap.get(box.id) || []).slice();
+    // 替代关系里写了不存在的箱号时提醒一下（多半是打错字）
+    for (const [front, backs] of subMap) {
+      if (!byId.has(front)) console.warn("[BoxSearch] 替代关系里的箱号不存在：" + front);
+      for (const back of backs) {
+        if (!byId.has(back)) console.warn("[BoxSearch] 替代关系里的箱号不存在：" + back);
+      }
+    }
+    return {
+      boxes,
+      counts: data.counts || {},
+      generatedAt: data.generatedAt || "",
+      substitutes: subMap,
+    };
   }
 
   function codeNum(id) {
@@ -247,5 +292,8 @@
     };
   }
 
-  return { norm, core, makeIndex, search, suggest, buildSuggestions, score, PREFIX_ORDER };
+  return {
+    norm, core, makeIndex, search, suggest, buildSuggestions, score,
+    parseSubstitutes, PREFIX_ORDER,
+  };
 });

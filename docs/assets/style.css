@@ -346,6 +346,51 @@ mark {
   color: var(--muted);
 }
 
+/* 可替代箱号 */
+.subs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.subs-label {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sub-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid #bcd8ef;
+  background: #f2f8fe;
+  color: var(--blue);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.sub-chip:active { background: #e2f0fc; }
+
+.sub-id { font-weight: 700; letter-spacing: 0.3px; }
+
+.sub-name {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .more {
   font-size: 12.5px;
   color: var(--blue);

@@ -1,5 +1,5 @@
 /* 简单的离线缓存：仓库内静态文件全部缓存，数据文件用“先返回缓存再后台更新” */
-const CACHE = "box-lookup-v1";
+const CACHE = "box-lookup-v2";
 const ASSETS = [
   "./",
   "index.html",
