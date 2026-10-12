@@ -110,10 +110,9 @@
 
   function sourceTag(hits) {
     if (!hits.length) return "";
+    // “两人已核对”不再展示，只保留“这份型号只有一份表格有”的待核对提示
     const verified = hits.every((h) => h.m.v === "both");
-    return verified
-      ? '<span class="tag verified">两人已核对</span>'
-      : '<span class="tag pending">待核对</span>';
+    return verified ? "" : '<span class="tag pending">待核对</span>';
   }
 
   /** 本箱缺货时可以拿来替代的箱号（数据来自 data/substitutes.json） */
