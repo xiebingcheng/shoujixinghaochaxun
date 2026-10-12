@@ -5,7 +5,7 @@
    - 数据文件（.json 等）：先返回缓存（秒开），同时后台拉一次更新缓存。
 
    改完这里的代码记得把 CACHE 的版本号 +1，否则老用户的旧缓存不会重建。 */
-const CACHE = "box-lookup-v3";
+const CACHE = "box-lookup-v4";
 const ASSETS = [
   "./",
   "index.html",
@@ -24,7 +24,9 @@ function isShell(url) {
 
 /** 先网络再缓存：网络不通时用缓存，保证离线也能打开 */
 function networkFirst(req) {
-  return fetch(req)
+  // cache:"no-cache" → 每次都跟服务器核对一遍（文件带 ETag，没变就 304，很快）。
+  // 否则 GitHub Pages 给资源打的 max-age=600 会让刚发布的改动「刷新了还是旧版」。
+  return fetch(req, { cache: "no-cache" })
     .then((resp) => {
       if (resp && resp.ok) {
         const copy = resp.clone();
