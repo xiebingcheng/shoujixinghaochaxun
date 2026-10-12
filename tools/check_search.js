@@ -42,11 +42,18 @@ console.log(`\n联想候选共 ${sugg.length} 条\n`);
 
 // 箱号替代关系
 console.log("\n替代关系自测：");
-const EXPECT = {
-  S44: ["S04"], S48: ["S59"], S49: ["S33"], S50: ["S76"], S51: ["S59"], S52: ["S39"],
-  S55: ["S34"], S60: ["S57"], S61: ["S58"], S63: ["S43"], S64: ["S59"], S66: ["S28"],
-  S68: ["S58"], S69: ["S35"], S70: ["S42"], S72: ["S35"], S75: ["S41"], S78: ["S56"],
-};
+const PAIRS = [
+  "S44-S04", "S48-S59", "S49-S33", "S50-S76", "S51-S59", "S52-S39", "S55-S34",
+  "S60-S57", "S61-S58", "S63-S43", "S64-S59", "S66-S28", "S68-S58", "S69-S35",
+  "S70-S42", "S72-S35", "S75-S41", "S78-S56",
+];
+// 每条关系都是双向的：两个箱号互相写进对方的可替代箱号
+const EXPECT = {};
+for (const pair of PAIRS) {
+  const [a, b] = pair.split("-");
+  (EXPECT[a] = EXPECT[a] || []).push(b);
+  (EXPECT[b] = EXPECT[b] || []).push(a);
+}
 let bad = 0;
 for (const [front, backs] of Object.entries(EXPECT)) {
   const box = index.boxes.find((b) => b.id === front);
@@ -65,13 +72,17 @@ const anySub = noSub.boxes.some((b) => (b.subs || []).length);
 console.log(`  不带替代文件时也能建索引：${anySub ? "✗ 居然有替代数据" : "✓"}`);
 if (anySub) bad += 1;
 
-// 替代关系解析的容错（全角横线、空格、数组写法）
+// 替代关系解析的容错（全角横线、空格、数组写法、双向 / 单向）
 const parsed = api.parseSubstitutes({
-  pairs: ["s49－S33", " S50 - S76 ", ["S51", "S59"], "S49-S44", "乱写的"],
+  pairs: ["s49－S33", " S50 - S76 ", ["S51", "S59"], "S49-S44", "S61>S58", "乱写的"],
 });
-const parsedOk = parsed.get("S49").join(",") === "S33,S44" && parsed.get("S50").join(",") === "S76" &&
-  parsed.get("S51").join(",") === "S59" && !parsed.get("乱写的");
-console.log(`  写法容错（全角/空格/数组/多条）：${parsedOk ? "✓" : "✗ " + JSON.stringify([...parsed])}`);
+const parsedOk = parsed.get("S49").join(",") === "S33,S44" &&
+  parsed.get("S33").join(",") === "S49" &&      // 双向：反方向也自动连上
+  parsed.get("S50").join(",") === "S76" && parsed.get("S76").join(",") === "S50" &&
+  parsed.get("S51").join(",") === "S59" && parsed.get("S59").join(",") === "S51" &&
+  parsed.get("S61").join(",") === "S58" && !parsed.has("S58") &&   // 单向：反方向不连
+  !parsed.get("乱写的");
+console.log(`  写法容错（全角/空格/数组/双向/单向）：${parsedOk ? "✓" : "✗ " + JSON.stringify([...parsed])}`);
 if (!parsedOk) bad += 1;
 
 console.log(bad ? `\n[FAIL] ${bad} 项不符` : "\n[OK] 替代关系全部通过");

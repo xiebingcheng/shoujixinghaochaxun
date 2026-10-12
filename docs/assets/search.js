@@ -51,6 +51,8 @@
   const BOX_ID_RE = /^[A-Z]\d{1,3}$/;
   // 替代关系写成「S49-S33」这种一条一条的文本，允许 - － — – ~ ～ → , ， 、 ; ； / ／ | 分隔
   const SUB_SPLIT_RE = /[-－—–~～→>,，、;；/／|]+/;
+  // 「A>B」「A→B」= 单向（只有 A 缺货时才用 B）；用 - 、~ 等连接 = 双向（两个箱互相替代）
+  const ONE_WAY_RE = /[>→]/;
 
   function norm(text) {
     let s = String(text == null ? "" : text).normalize("NFKC").toLowerCase();
@@ -80,24 +82,29 @@
    * 解析 docs/data/substitutes.json 里的箱号替代关系。
    * 支持两种写法：
    *   { note: "…", pairs: ["S49-S33", …] }   或   ["S49-S33", ["S49", "S33"], …]
+   * 「S49-S33」表示两个箱号互相替代（双向）；写「S49>S33」则只有 S49 缺货时才用 S33。
    * 返回 Map：前箱号 -> [可替代箱号…]
    */
   function parseSubstitutes(raw) {
     const list = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.pairs) ? raw.pairs : []);
     const map = new Map();
+    const link = (from, to) => {
+      if (!BOX_ID_RE.test(from) || !BOX_ID_RE.test(to) || from === to) return;
+      const arr = map.get(from) || [];
+      if (!arr.includes(to)) arr.push(to);
+      map.set(from, arr);
+    };
     for (const item of list) {
       if (item == null) continue;
-      const parts = (Array.isArray(item) ? item : String(item).split(SUB_SPLIT_RE))
+      const oneWay = !Array.isArray(item) && ONE_WAY_RE.test(String(item));
+      const ids = (Array.isArray(item) ? item : String(item).split(SUB_SPLIT_RE))
         .map((s) => String(s == null ? "" : s).trim().toUpperCase())
         .filter(Boolean);
-      if (parts.length < 2) continue;
-      const front = parts[0];
-      if (!BOX_ID_RE.test(front)) continue;
-      const backs = map.get(front) || [];
-      for (const back of parts.slice(1)) {
-        if (BOX_ID_RE.test(back) && back !== front && !backs.includes(back)) backs.push(back);
+      if (ids.length < 2) continue;
+      for (const other of ids.slice(1)) {
+        link(ids[0], other);
+        if (!oneWay) link(other, ids[0]);
       }
-      if (backs.length) map.set(front, backs);
     }
     return map;
   }

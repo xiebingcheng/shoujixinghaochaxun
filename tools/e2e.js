@@ -76,7 +76,7 @@ const logs = [];
   await page.waitForTimeout(350);
   console.log("搜「S61」可替代箱号:", JSON.stringify(await page.locator('#results .card-sub[data-id="S58"] .card-sub-note').allTextContents()));
 
-  // S64 缺货时用 S59 的机型顶（S64 是前箱号，S59 是备用箱）
+  // S64 与 S59 互相替代
   await page.fill("#q", "一加Turbo6");
   await page.waitForTimeout(400);
   const s64 = page.locator('#results .card:not(.card-sub)[data-id="S64"]');
@@ -84,9 +84,9 @@ const logs = [];
   console.log("  可替代卡片:", JSON.stringify(await page.locator('#results .card-sub[data-id="S59"] .card-sub-note').allTextContents()));
   await page.fill("#q", "荣耀X70");
   await page.waitForTimeout(400);
-  console.log("搜「荣耀X70」（S59 自己不是前箱号）→ S59 的替代行:",
-    await page.locator('#results .card:not(.card-sub)[data-id="S59"] .subs').count(), "(应为 0)",
-    "| 可替代分组卡片数:", await page.locator("#results .card-sub").count(), "(应为 0)");
+  const s59 = page.locator('#results .card:not(.card-sub)[data-id="S59"]');
+  console.log("搜「荣耀X70」→ S59 卡片上的替代箱号:", JSON.stringify(await s59.locator(".sub-link").allTextContents()),
+    "| 可替代分组卡片数:", await page.locator("#results .card-sub").count(), "(应为 3)");
   await page.fill("#q", "荣耀Magic7");
   await page.waitForTimeout(400);
   console.log("搜「荣耀Magic7」→ S48 的可替代卡片:",
@@ -110,7 +110,7 @@ const logs = [];
 
   await page.fill("#q", "");
   await page.waitForTimeout(350);
-  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-link)").count(), "(应为 18)");
+  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-link)").count(), "(应为 32)");
   console.log("  浏览视图里没有可替代分组:", await page.locator("#results .card-sub").count(), "(应为 0)");
 
   // 5. 320px 窄屏截图
