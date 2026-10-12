@@ -75,3 +75,44 @@ console.log(`  写法容错（全角/空格/数组/多条）：${parsedOk ? "✓
 if (!parsedOk) bad += 1;
 
 console.log(bad ? `\n[FAIL] ${bad} 项不符` : "\n[OK] 替代关系全部通过");
+
+// 认真过一遍每个箱号：前箱号里的每个型号，用户搜出来时能不能带出它的可替代箱号
+console.log("\n可替代箱号触发检查（只认「精确匹配」，相近结果不带替代箱号）：");
+let missTotal = 0;
+for (const [front, backs] of index.substitutes) {
+  const box = index.boxes.find((b) => b.id === front);
+  if (!box) {
+    console.log(`  ✗ ${front} 这个箱号在数据里不存在`);
+    missTotal += 1;
+    continue;
+  }
+  const hitModels = [];
+  const missModels = [];
+  for (const m of box.models) {
+    const res = api.search(index, m.t);
+    if (res.exact.some((r) => r.box.id === front)) hitModels.push(m.t);
+    else missModels.push(m.t);
+  }
+  console.log(`  ${front} → ${backs.join("、")}：${hitModels.length}/${box.models.length} 个型号能带出替代箱号` +
+    (missModels.length ? "  ⚠" : ""));
+  if (missModels.length) {
+    missTotal += missModels.length;
+    console.log(`      搜这些型号时带不出来：${missModels.join("、")}`);
+  }
+}
+console.log(missTotal
+  ? `  ⚠ 共 ${missTotal} 处搜不出本箱号，这些型号搜完看不到可替代箱号`
+  : "  ✓ 每个前箱号里的型号，搜出来都能带出它的可替代箱号");
+
+// 反向确认：某箱号只有作为“相近结果”出现时，绝不会带出替代箱号（用户报的问题）
+console.log("\n“相近结果不应带替代箱号”抽查：");
+for (const q of ["MATE80PROMAX", "MATE80PRO", "苹果17Pro", "K15PRO"]) {
+  const res = api.search(index, q);
+  const exactIds = new Set(res.exact.map((r) => r.box.id));
+  const leaked = res.fuzzy
+    .filter((r) => !exactIds.has(r.box.id) && (r.box.subs || []).length)
+    .map((r) => `${r.box.id}→${r.box.subs.join("/")}`);
+  console.log(`  搜「${q}」：精确匹配 ${[...exactIds].join(" ") || "无"}` +
+    ` | 只出现在相近结果里、带替代箱号的：` +
+    (leaked.length ? leaked.join(" ") + "（现在不显示替代箱号）" : "无"));
+}

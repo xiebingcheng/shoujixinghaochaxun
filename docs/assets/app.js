@@ -160,7 +160,7 @@
       "</div>";
   }
 
-  /** 搜索结果里单独列出的“可替代箱号”卡片 */
+  /** 搜索结果里单独列出的“可替代箱号”卡片（froms = 它可以替代的那几个箱子） */
   function subCard(box, froms) {
     const open = state.expanded.has(box.id);
     const limited = Math.min(box.models.length, open ? 999 : 8);
@@ -176,7 +176,10 @@
     } else if (box.models.length > limited) {
       more = `<button class="more" data-more="${esc(box.id)}" type="button">展开其余 ${box.models.length - limited} 个型号</button>`;
     }
-    const fromText = froms.map((f) => `${esc(f.id)}（${esc(f.name || "未命名箱")}）`).join("、");
+    const fromText = froms.map((f) =>
+      `<button class="sub-link" type="button" data-sub="${esc(f.id)}" title="查看 ${esc(f.id)}">${esc(f.id)}</button>` +
+      `（${esc(f.name || "未命名箱")}）`
+    ).join("、");
     const name = box.name ? esc(box.name) : "未命名箱";
     return `
       <article class="card card-sub${open ? " card-open" : ""}" data-id="${esc(box.id)}">
@@ -186,7 +189,7 @@
             <span class="card-name">${name}</span>
             <span class="tag sub">可替代</span>
           </div>
-          <div class="card-sub-note">可以替代 ${fromText}里的机型</div>
+          <div class="card-sub-note">${fromText}缺货时，可以用本箱里的机型替代</div>
           <ul class="hits">${lines}</ul>
           ${more}
           ${footHTML(box, undefined, limited > 12 && !more)}
@@ -194,7 +197,7 @@
       </article>`;
   }
 
-  function resultCard(result, tokens) {
+  function resultCard(result, tokens, withSubs) {
     const box = result.box;
     const open = state.expanded.has(box.id);
     const limited = Math.min(result.hits.length, open ? 999 : 8);
@@ -236,7 +239,7 @@
           <ul class="hits">${lines}${restHTML}</ul>
           ${more}
           ${footHTML(box, undefined, shownCount > 12 && !more)}
-          ${subsHTML(box)}
+          ${withSubs === false ? "" : subsHTML(box)}
         </div>
       </article>`;
   }
@@ -316,9 +319,10 @@
 
     const shownFuzzy = fuzzy.slice(0, FUZZY_LIMIT);
 
-    // 本次结果里出现的“可替代箱号”：前面的箱子缺货时，可以用它里面的机型顶上
+    // “可替代箱号”只跟着「精确匹配」走：用户搜的型号确实在这个箱里，才说明它缺货时能用谁顶。
+    // 相近结果不带替代箱号，避免用户以为那个箱子能替代自己查的箱号。
     const subFroms = new Map(); // 可替代箱号 -> [被它替代的箱子…]
-    for (const r of exact.concat(shownFuzzy)) {
+    for (const r of exact) {
       for (const id of r.box.subs || []) {
         const list = subFroms.get(id) || [];
         if (!list.includes(r.box)) list.push(r.box);
@@ -352,7 +356,7 @@
     }
     if (fuzzy.length) {
       html += `<h2 class="group-title">相近结果（${fuzzy.length}）</h2>`;
-      html += shownFuzzy.map((r) => resultCard(r, tokens)).join("");
+      html += shownFuzzy.map((r) => resultCard(r, tokens, false)).join("");
       if (fuzzy.length > shownFuzzy.length) {
         html += `<p class="list-note">相近结果较多，只显示前 ${shownFuzzy.length} 个，` +
           `再补充几个字符可以缩小范围。</p>`;

@@ -76,6 +76,14 @@ const logs = [];
   await page.waitForTimeout(350);
   console.log("搜「S61」可替代箱号:", JSON.stringify(await page.locator('#results .card-sub[data-id="S58"] .card-sub-note').allTextContents()));
 
+  // 关键回归：搜 MATE80PROMAX 时 S70 只是“相近结果”，不能把 S70 的可替代箱号 S42 带出来
+  await page.fill("#q", "MATE80PROMAX");
+  await page.waitForTimeout(400);
+  console.log("搜「MATE80PROMAX」分组标题:", await page.locator("#results .group-title").allTextContents());
+  console.log("  可替代卡片数（应为 0）:", await page.locator("#results .card-sub").count(),
+    "| 相近结果里的替代行（应为 0）:", await page.locator('#results .card[data-id="S70"] .subs').count(),
+    "| 摘要:", (await page.textContent("#summary")).trim());
+
   // 同一个可替代箱号被两个箱子指向时，说明里要都写出来
   await page.fill("#q", "K15PRO+");
   await page.waitForTimeout(350);
