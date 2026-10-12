@@ -277,6 +277,12 @@ def main():
         if n_del or n_add or n_fix:
             logs.append(f"{bid}: 删除 {n_del} 条 / 新增 {n_add} 条 / 纠正写法 {n_fix} 条")
 
+    # 没有任何型号记录的箱号（如 S83/S90，两份表格里都写着"暂无(图片中未展示)"）不上线
+    empty = [b["id"] for b in out_boxes if not b["models"]]
+    if empty:
+        out_boxes = [b for b in out_boxes if b["models"]]
+        logs.append("隐藏空箱号：" + "、".join(empty))
+
     os.makedirs(OUT_DIR, exist_ok=True)
     payload = {
         "generatedAt": __import__("datetime").date.today().isoformat(),

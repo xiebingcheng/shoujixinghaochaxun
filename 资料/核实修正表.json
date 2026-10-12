@@ -4,7 +4,7 @@
   "boxes": {
     "S16": {
       "keep": ["Y72INDIA", "荣耀畅玩40S", "红米9C", "华为畅玩30M", "华为优畅享30E", "荣耀畅玩50M"],
-      "remove": ["红米9C荣耀畅玩40S", "华为畅享30M", "Y72INDIAN"]
+      "remove": ["红米9C荣耀畅玩40S", "华为畅享30M"]
     },
     "S17": {
       "keep": ["Nova7SE(顶上有呼吸灯往下贴一点)"],
@@ -12,13 +12,12 @@
     },
     "S18": { "keep": ["荣耀畅玩20Pro", "荣耀Play5"] },
     "S24": {
-      "keep": ["真我2Pro"],
-      "remove": ["真我ZPro"]
+      "keep": ["真我2Pro"]
     },
     "S31": { "remove": ["荣耀X30i"] },
     "S33": {
       "keep": ["真我7I", "红米K40游戏版增强版", "黑鲨6R", "黑鲨4SGUNDAM", "红米K50Pro至尊版", "红米Note11 5G"],
-      "remove": ["真我7", "黑鲨5GUNDAM", "红米K40游戏增强版"]
+      "remove": ["真我7", "黑鲨5GUNDAM"]
     },
     "S34": { "keep": ["Y200I", "真我NEO7SE", "一加TURBO6X", "畅享90"] },
     "S38": {
@@ -31,8 +30,7 @@
       "remove": ["小米17PRO"]
     },
     "S61": {
-      "keep": ["一加AE6至尊"],
-      "remove": ["一加A6至尊"]
+      "keep": ["一加AE6至尊"]
     },
     "S63": { "keep": ["S50T"] },
     "S65": {
@@ -46,8 +44,8 @@
     },
     "L05": { "remove": ["红米 Note15Pro"] },
     "L07": {
-      "keep": ["OPPO A6SPro", "S50", "P50", "荣耀 600Lite", "P50E", "华为 Nova6SE", "X27", "MAGIC8", "iPhone17 Air"],
-      "remove": ["荣耀600Lite P50 P50E", "华为Nova6SE X27", "荣耀600Pro MAGIC8 iPhone17 Air"]
+      "keep": ["OPPO A6SPro", "S50", "IQOO Z11 YURBO", "P50", "荣耀 600Lite", "P50E", "华为 Nova6SE", "X27", "MAGIC8", "iPhone17 Air"],
+      "remove": ["荣耀600Lite P50 P50E", "华为Nova6SE X27", "荣耀600Pro MAGIC8 iPhone17 Air", "IQOO Z11", "YURBO", "OPPO A6SPRO S50"]
     },
     "L08": {
       "keep": ["红米Note 9Pro 4G", "真我V5", "真我 Q2NARNO30 Pro", "红米Note12T Pro小板", "华为Nova7SE"],
@@ -63,7 +61,7 @@
     },
     "L13": {
       "keep": ["vivo X300S", "畅玩60m", "荣耀 Magic7"],
-      "remove": ["vivo X300S 畅玩60m", "荣耀Maguc7"]
+      "remove": ["vivo X300S 畅玩60m"]
     },
     "L02": { "keep": ["荣耀 魔术Pro"] },
     "S25": { "keep": ["华为P50E稍微顶壳", "华为P50E轻微顶壳"] },
