@@ -270,6 +270,40 @@ body {
 .badge-y { background: linear-gradient(160deg, #e2b833, #bb8f13); }
 .badge-sm { width: 46px; height: 46px; border-radius: 10px; font-size: 14px; }
 
+/* 箱号徽标本身就是「展开箱内机型」的按钮 */
+.badge-btn {
+  position: relative;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.badge-btn::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid rgba(255, 255, 255, 0.88);
+  transition: transform 0.15s ease;
+}
+
+.badge-btn[aria-expanded="true"]::after { transform: rotate(180deg); }
+
+.badge-btn:active { filter: brightness(1.08); }
+.badge-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.card-open {
+  border-color: #bcd8ef;
+  box-shadow: 0 4px 16px rgba(19, 52, 84, 0.14);
+}
+
 .card-body { flex: 1; min-width: 0; }
 
 .card-head {
@@ -327,6 +361,18 @@ body {
 
 .hits li.exact { color: #14324d; font-weight: 600; }
 
+.hits li.rest { color: #6b7a8c; }
+.hits li.rest::before { background: #dbe4ee; }
+
+.hits li.rest-label {
+  margin-top: 6px;
+  padding-left: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hits li.rest-label::before { display: none; }
+
 mark {
   background: #ffe9a8;
   color: inherit;
@@ -345,6 +391,41 @@ mark {
   font-size: 12px;
   color: var(--muted);
 }
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.card-foot .card-meta { margin-top: 0; }
+
+.card-foot.foot-end { justify-content: flex-end; }
+
+.foot-actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.foot-actions .more { padding-top: 0; }
+
+.copy-btn {
+  flex: none;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--blue);
+  background: #f1f7fd;
+  border: 1px solid #d8e7f4;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.copy-btn:active { background: #e3eefa; }
 
 /* 可替代箱号（卡片角上的小链接） */
 .subs {

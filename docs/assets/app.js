@@ -104,9 +104,35 @@
     return { text, others: all.filter((t) => t !== text) };
   }
 
-  function badge(box, small) {
+  /** small：浏览列表里的小号徽标；toggle：箱号变成可点开的按钮 */
+  function badge(box, small, toggle) {
     const size = small ? " badge-sm" : "";
-    return `<div class="badge badge-${box.prefix.toLowerCase()}${size}">${esc(box.id)}</div>`;
+    const cls = `badge badge-${box.prefix.toLowerCase()}${size}`;
+    if (!toggle) return `<div class="${cls}">${esc(box.id)}</div>`;
+    const open = state.expanded.has(box.id);
+    return `<button class="${cls} badge-btn" type="button" data-toggle="${esc(box.id)}" ` +
+      `aria-expanded="${open}" aria-label="展开 ${esc(box.id)} 箱内的机型" ` +
+      `title="点开查看 ${esc(box.id)} 箱里的机型">${esc(box.id)}</button>`;
+  }
+
+  /** 卡片底部：左边一句说明，右边「收起 / 复制箱号」按钮 */
+  function footHTML(box, meta, showCollapse) {
+    const text = meta === undefined ? `箱号 ${esc(box.id)} · 箱内共 ${box.total} 个型号` : meta;
+    const collapse = showCollapse && state.expanded.has(box.id)
+      ? `<button class="more" data-more="${esc(box.id)}" type="button">收起</button>`
+      : "";
+    return `<div class="card-foot${text ? "" : " foot-end"}">` +
+      (text ? `<span class="card-meta">${text}</span>` : "") +
+      '<span class="foot-actions">' + collapse +
+      `<button class="copy-btn" type="button" data-copy="${esc(box.id)}" ` +
+      `title="复制箱号 ${esc(box.id)}">复制箱号</button></span>` +
+      "</div>";
+  }
+
+  function toggleBox(id) {
+    if (state.expanded.has(id)) state.expanded.delete(id);
+    else state.expanded.add(id);
+    render();
   }
 
   function sourceTag(hits) {
@@ -136,21 +162,25 @@
 
   /** 搜索结果里单独列出的“可替代箱号”卡片 */
   function subCard(box, froms) {
-    const limited = Math.min(box.models.length, state.expanded.has(box.id) ? 99 : 8);
+    const open = state.expanded.has(box.id);
+    const limited = Math.min(box.models.length, open ? 999 : 8);
     const lines = box.models.slice(0, limited).map((m) => {
       const alt = (m.alt || []).length
         ? ` <span class="alt">（另一写法：${esc(m.alt.join("、"))}）</span>`
         : "";
       return `<li>${esc(m.t)}${alt}</li>`;
     }).join("");
-    const more = box.models.length > limited
-      ? `<button class="more" data-more="${esc(box.id)}" type="button">展开其余 ${box.models.length - limited} 个型号</button>`
-      : "";
+    let more = "";
+    if (open && box.models.length > 8) {
+      more = `<button class="more" data-more="${esc(box.id)}" type="button">收起</button>`;
+    } else if (box.models.length > limited) {
+      more = `<button class="more" data-more="${esc(box.id)}" type="button">展开其余 ${box.models.length - limited} 个型号</button>`;
+    }
     const fromText = froms.map((f) => `${esc(f.id)}（${esc(f.name || "未命名箱")}）`).join("、");
     const name = box.name ? esc(box.name) : "未命名箱";
     return `
-      <article class="card card-sub" data-id="${esc(box.id)}">
-        ${badge(box, false)}
+      <article class="card card-sub${open ? " card-open" : ""}" data-id="${esc(box.id)}">
+        ${badge(box, false, true)}
         <div class="card-body">
           <div class="card-head">
             <span class="card-name">${name}</span>
@@ -159,14 +189,15 @@
           <div class="card-sub-note">可以替代 ${fromText}里的机型</div>
           <ul class="hits">${lines}</ul>
           ${more}
-          <div class="card-meta">箱号 ${esc(box.id)} · 箱内共 ${box.total} 个型号</div>
+          ${footHTML(box, undefined, limited > 12 && !more)}
         </div>
       </article>`;
   }
 
   function resultCard(result, tokens) {
     const box = result.box;
-    const limited = Math.min(result.hits.length, state.expanded.has(box.id) ? 99 : 8);
+    const open = state.expanded.has(box.id);
+    const limited = Math.min(result.hits.length, open ? 999 : 8);
     const lines = result.hits.slice(0, limited).map((h) => {
       const cls = h.s >= 96 ? "exact" : "";
       const picked = pickVariant(h.m, tokens);
@@ -175,39 +206,70 @@
         : "";
       return `<li class="${cls}">${highlight(picked.text, tokens)}${alt}</li>`;
     }).join("");
-    const more = result.hits.length > limited
-      ? `<button class="more" data-more="${esc(box.id)}" type="button">展开其余 ${result.hits.length - limited} 个型号</button>`
+    // 展开时把箱子里没命中的型号也一起列出来，方便看清整箱内容
+    const hitModels = new Set(result.hits.map((h) => h.m));
+    const rest = open ? box.models.filter((m) => !hitModels.has(m)) : [];
+    const restHTML = rest.length
+      ? '<li class="rest-label">箱内其余型号</li>' + rest.map((m) => {
+        const alt = (m.alt || []).length
+          ? ` <span class="alt">（另一写法：${esc(m.alt.join("、"))}）</span>`
+          : "";
+        return `<li class="rest">${esc(m.t)}${alt}</li>`;
+      }).join("")
       : "";
+    const shownCount = limited + rest.length;
+    let more = "";
+    if (open && result.hits.length > 8) {
+      more = `<button class="more" data-more="${esc(box.id)}" type="button">收起</button>`;
+    } else if (result.hits.length > limited) {
+      more = `<button class="more" data-more="${esc(box.id)}" type="button">展开其余 ${result.hits.length - limited} 个命中型号</button>`;
+    }
     const name = box.name ? esc(box.name) : "未命名箱";
     return `
-      <article class="card" data-id="${esc(box.id)}">
-        ${badge(box, false)}
+      <article class="card${open ? " card-open" : ""}" data-id="${esc(box.id)}">
+        ${badge(box, false, true)}
         <div class="card-body">
           <div class="card-head">
             <span class="card-name">${name}</span>
             ${sourceTag(result.hits)}
           </div>
-          <ul class="hits">${lines}</ul>
+          <ul class="hits">${lines}${restHTML}</ul>
           ${more}
-          <div class="card-meta">箱号 ${esc(box.id)} · 箱内共 ${box.total} 个型号</div>
+          ${footHTML(box, undefined, shownCount > 12 && !more)}
           ${subsHTML(box)}
         </div>
       </article>`;
   }
 
   function browseCard(box) {
-    const preview = box.models.slice(0, 6).map((m) => m.t).join("、");
-    const rest = box.models.length > 6 ? " 等" : "";
+    const open = state.expanded.has(box.id);
     const name = box.name ? esc(box.name) : "未命名箱";
-    const body = box.models.length
-      ? `<div class="card-meta">${esc(preview)}${rest}（共 ${box.total} 个）</div>`
-      : '<div class="card-meta">暂无型号数据</div>';
+    let body;
+    let foot;
+    if (!box.models.length) {
+      body = '<div class="card-meta">暂无型号数据</div>';
+      foot = footHTML(box, "");
+    } else if (open) {
+      body = '<ul class="hits">' + box.models.map((m) => {
+        const alt = (m.alt || []).length
+          ? ` <span class="alt">（另一写法：${esc(m.alt.join("、"))}）</span>`
+          : "";
+        return `<li>${esc(m.t)}${alt}</li>`;
+      }).join("") + "</ul>";
+      foot = footHTML(box, undefined, box.models.length > 12);
+    } else {
+      const preview = box.models.slice(0, 6).map((m) => esc(m.t)).join("、");
+      const rest = box.models.length > 6 ? " 等" : "";
+      body = `<div class="card-meta">${preview}${rest}（共 ${box.total} 个）</div>`;
+      foot = footHTML(box, "点箱号展开箱内机型");
+    }
     return `
-      <article class="card" data-id="${esc(box.id)}">
-        ${badge(box, true)}
+      <article class="card${open ? " card-open" : ""}" data-id="${esc(box.id)}">
+        ${badge(box, true, true)}
         <div class="card-body">
           <div class="card-head"><span class="card-name">${name}</span></div>
           ${body}
+          ${foot}
           ${subsHTML(box)}
         </div>
       </article>`;
@@ -455,10 +517,14 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    const copyBtn = e.target.closest("[data-copy]");
+    if (copyBtn) {
+      copy(copyBtn.dataset.copy);
+      return;
+    }
     const more = e.target.closest("[data-more]");
     if (more) {
-      state.expanded.add(more.dataset.more);
-      render();
+      toggleBox(more.dataset.more);
       return;
     }
     const example = e.target.closest("[data-example]");
@@ -467,8 +533,9 @@
       runSearch();
       return;
     }
+    // 点箱号（或卡片空白处）展开 / 收起，看到箱号里到底有哪些机型
     const card = e.target.closest(".card");
-    if (card) copy(card.dataset.id);
+    if (card && card.dataset.id) toggleBox(card.dataset.id);
   });
 
   window.addEventListener("scroll", () => {

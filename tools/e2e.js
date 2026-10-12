@@ -30,8 +30,21 @@ const logs = [];
   console.log("分组标题:", await page.locator("#results .group-title").allTextContents());
   console.log("卡片数:", await page.locator("#results .card").count());
 
-  // 3. 点卡片复制
-  await page.click("#results .card");
+  // 3. 点箱号展开箱内机型（而不是复制）
+  const firstCard = page.locator("#results .card").first();
+  const before = await firstCard.locator(".hits li").count();
+  await firstCard.locator(".badge-btn").click();
+  await page.waitForTimeout(250);
+  const after = await firstCard.locator(".hits li").count();
+  console.log("点箱号展开：型号行数", before, "→", after,
+    "| aria-expanded:", await firstCard.locator(".badge-btn").getAttribute("aria-expanded"),
+    "| 提示:", JSON.stringify((await page.textContent("#toast")).trim()));
+  await firstCard.locator(".badge-btn").click();
+  await page.waitForTimeout(200);
+  console.log("再点一次收起 → 型号行数:", await firstCard.locator(".hits li").count());
+
+  // 3.5 复制箱号要走独立的「复制箱号」按钮
+  await page.click("#results .card .copy-btn");
   await page.waitForTimeout(250);
   console.log("提示:", (await page.textContent("#toast")).trim());
   console.log("URL:", page.url());
