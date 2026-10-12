@@ -27,12 +27,8 @@ const logs = [];
   await page.fill("#q", "苹果13");
   await page.waitForTimeout(350);
   console.log("搜索摘要:", await page.textContent("#summary"));
-  const fuzzyBtn = page.locator("#fuzzy-toggle");
-  if (await fuzzyBtn.count()) {
-    await fuzzyBtn.click();
-    await page.waitForTimeout(200);
-    console.log("展开后卡片数:", await page.locator("#results .card").count());
-  }
+  console.log("分组标题:", await page.locator("#results .group-title").allTextContents());
+  console.log("卡片数:", await page.locator("#results .card").count());
 
   // 3. 点卡片复制
   await page.click("#results .card");

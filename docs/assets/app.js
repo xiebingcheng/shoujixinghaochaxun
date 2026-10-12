@@ -15,13 +15,13 @@
 
   const PREFIX_LABEL = { S: "S 开头", L: "L 开头", Y: "Y 开头" };
   const EXAMPLES = ["Mate30Pro", "X60Pro", "苹果13", "红米K80", "S01"];
+  const FUZZY_LIMIT = 40;
 
   const state = {
     index: null,
     suggestList: [],
     prefix: "ALL",
     result: null,
-    showFuzzy: false,
     expanded: new Set(),
   };
 
@@ -201,23 +201,24 @@
       return;
     }
 
-    const primary = exact.length ? exact : [];
-    const secondary = state.showFuzzy ? fuzzy : [];
-    summaryEl.innerHTML = primary.length
-      ? `找到 <b>${primary.length}</b> 个箱号包含「${esc(res.query.trim())}」`
+    summaryEl.innerHTML = exact.length
+      ? `找到 <b>${exact.length}</b> 个箱号包含「${esc(res.query.trim())}」` +
+        (fuzzy.length ? `，另有 <b>${fuzzy.length}</b> 个相近结果` : "")
       : `没有完全匹配，以下是 <b>${fuzzy.length}</b> 个相近结果`;
 
     let html = "";
-    if (primary.length) {
-      html += `<h2 class="group-title">精确匹配（${primary.length}）</h2>`;
-      html += primary.map((r) => resultCard(r, tokens)).join("");
-      if (!state.showFuzzy && fuzzy.length) {
-        html += `<button class="fuzzy-toggle" id="fuzzy-toggle" type="button">还有 ${fuzzy.length} 个相近结果（点击查看）</button>`;
-      }
+    if (exact.length) {
+      html += `<h2 class="group-title">精确匹配（${exact.length}）</h2>`;
+      html += exact.map((r) => resultCard(r, tokens)).join("");
     }
-    if (secondary.length) {
-      html += `<h2 class="group-title">相近结果（${secondary.length}）</h2>`;
-      html += secondary.map((r) => resultCard(r, tokens)).join("");
+    if (fuzzy.length) {
+      html += `<h2 class="group-title">相近结果（${fuzzy.length}）</h2>`;
+      const shown = fuzzy.slice(0, FUZZY_LIMIT);
+      html += shown.map((r) => resultCard(r, tokens)).join("");
+      if (fuzzy.length > shown.length) {
+        html += `<p class="list-note">相近结果较多，只显示前 ${shown.length} 个，` +
+          `再补充几个字符可以缩小范围。</p>`;
+      }
     }
     resultsEl.innerHTML = html;
   }
@@ -291,7 +292,6 @@
   let timer = 0;
   function runSearch(updateUrl) {
     const query = inputEl.value.trim();
-    state.showFuzzy = false;
     state.expanded.clear();
     state.result = query ? window.BoxSearch.search(state.index, query) : null;
     render();
@@ -374,13 +374,6 @@
     if (more) {
       state.expanded.add(more.dataset.more);
       render();
-      return;
-    }
-    if (e.target.closest("#fuzzy-toggle")) {
-      state.showFuzzy = true;
-      render();
-      const head = resultsEl.querySelector(".group-title");
-      if (head) head.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     const example = e.target.closest("[data-example]");
