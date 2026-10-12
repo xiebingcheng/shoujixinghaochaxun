@@ -302,7 +302,11 @@ def main():
 
     # ------------------------------------------------------------ 核对报告
     lines = ["# 数据核对报告（d 版 vs q 版）", "",
-             f"生成时间：{payload['generatedAt']}", ""]
+             f"生成时间：{payload['generatedAt']}", "",
+             "> 本报告只对比两份原始表格的差异，不含人工核实结论。",
+             "> 已核实的修正在 资料/核实修正表.json，由 build_data.py 应用"
+             f"（本次应用 {payload['counts']['fixed']} 条）。",
+             "> 还没核实的条目见 reports/数据修正待确认.md。", ""]
     all_ids = []
     for prefix in PREFIX_ORDER:
         ids = sorted(set(parsed[("d", prefix)]) | set(parsed[("q", prefix)]),
