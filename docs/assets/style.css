@@ -274,8 +274,8 @@ body {
   user-select: all;
 }
 
-.badge-s { background: linear-gradient(160deg, #4b9ada, #23689f); }
-.badge-l { background: linear-gradient(160deg, #f0a83c, #d17f12); }
+.badge-s { background: linear-gradient(160deg, #e75757, #c62828); }
+.badge-l { background: linear-gradient(160deg, #3fb27a, #1e7a4f); }
 .badge-y { background: linear-gradient(160deg, #e2b833, #bb8f13); }
 .badge-sm { width: 46px; height: 46px; border-radius: 10px; font-size: 14px; }
 
