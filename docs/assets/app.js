@@ -8,6 +8,7 @@
   const summaryEl = $("#summary");
   const formEl = $("#search-form");
   const inputEl = $("#q");
+  const suggestEl = $("#suggest");
   const toastEl = $("#toast");
   const headerEl = $("#header");
   const toTopEl = $("#to-top");
@@ -17,11 +18,15 @@
 
   const state = {
     index: null,
+    suggestList: [],
     prefix: "ALL",
     result: null,
     showFuzzy: false,
     expanded: new Set(),
   };
+
+  let suggestItems = [];
+  let activeIndex = -1;
 
   // ------------------------------------------------------------ 工具函数
   function esc(text) {
@@ -184,7 +189,7 @@
     const tokens = String(inputEl.value).trim().split(/\s+/).filter(Boolean);
     if (res.q.length < 2) {
       summaryEl.textContent = "继续输入型号或箱号…";
-      resultsEl.innerHTML = emptyHTML("再多输入一点", "至少输入 2 个字符，例如 X60Pro、红米K80、S01");
+      resultsEl.innerHTML = emptyHTML("从上方的下拉列表选择机型", "继续输入会自动列出匹配的机型，也可以直接输入箱号，如 S01");
       return;
     }
     let exact = visibleBoxes(res.exact);
@@ -235,6 +240,53 @@
     else renderBrowse();
   }
 
+  // ------------------------------------------------------------ 输入联想
+  function closeSuggest() {
+    suggestEl.hidden = true;
+    suggestEl.innerHTML = "";
+    suggestItems = [];
+    activeIndex = -1;
+  }
+
+  function renderSuggest() {
+    const value = inputEl.value.trim();
+    if (!state.index || !value) {
+      closeSuggest();
+      return;
+    }
+    const res = window.BoxSearch.suggest(state.suggestList, value, 30);
+    if (!res.items.length) {
+      closeSuggest();
+      return;
+    }
+    suggestItems = res.items;
+    activeIndex = -1;
+    const tokens = value.split(/\s+/).filter(Boolean);
+    suggestEl.innerHTML = res.items.map((it, i) => {
+      const codeList = it.boxes.slice(0, 3).join("·") +
+        (it.boxes.length > 3 ? ` 等${it.boxes.length}` : "");
+      const alt = it.alt.length ? ` <span class="alt">（${esc(it.alt.join("、"))}）</span>` : "";
+      const tag = it.type === "name" ? '<span class="s-tag">箱名</span>' : "";
+      return `<div class="s-item" role="option" data-i="${i}">` +
+        `<span class="s-text">${highlight(it.text, tokens)}${tag}${alt}</span>` +
+        `<span class="s-boxes">${esc(codeList)}</span></div>`;
+    }).join("") +
+      (res.total > res.items.length
+        ? `<div class="s-more">还有 ${res.total - res.items.length} 条匹配，继续输入可缩小范围</div>`
+        : "");
+    suggestEl.hidden = false;
+  }
+
+  function selectSuggest(index) {
+    const item = suggestItems[index];
+    if (!item) return;
+    inputEl.value = item.text;
+    closeSuggest();
+    clearTimeout(timer);
+    runSearch();
+    inputEl.blur();
+  }
+
   // ------------------------------------------------------------ 交互
   let timer = 0;
   function runSearch(updateUrl) {
@@ -252,8 +304,52 @@
   }
 
   inputEl.addEventListener("input", () => {
+    renderSuggest();
     clearTimeout(timer);
     timer = setTimeout(() => runSearch(), 120);
+  });
+
+  inputEl.addEventListener("focus", () => {
+    if (inputEl.value.trim()) renderSuggest();
+  });
+
+  inputEl.addEventListener("keydown", (e) => {
+    if (suggestEl.hidden) {
+      if (e.key === "ArrowDown" && inputEl.value.trim()) {
+        e.preventDefault();
+        renderSuggest();
+      }
+      return;
+    }
+    const items = suggestEl.querySelectorAll(".s-item");
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const delta = e.key === "ArrowDown" ? 1 : -1;
+      activeIndex = Math.min(Math.max(activeIndex + delta, -1), items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("active", i === activeIndex));
+      if (activeIndex >= 0) items[activeIndex].scrollIntoView({ block: "nearest" });
+      return;
+    }
+    if (e.key === "Enter") {
+      if (activeIndex >= 0) {
+        e.preventDefault();
+        selectSuggest(activeIndex);
+      } else {
+        closeSuggest();
+      }
+      return;
+    }
+    if (e.key === "Escape") closeSuggest();
+  });
+
+  suggestEl.addEventListener("mousedown", (e) => e.preventDefault());
+  suggestEl.addEventListener("click", (e) => {
+    const item = e.target.closest(".s-item");
+    if (item) selectSuggest(Number(item.dataset.i));
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!formEl.contains(e.target)) closeSuggest();
   });
 
   formEl.addEventListener("submit", (e) => {
@@ -342,6 +438,7 @@
       return;
     }
     state.index = window.BoxSearch.makeIndex(data);
+    state.suggestList = window.BoxSearch.buildSuggestions(state.index.boxes);
     buildTabs();
     const initial = new URLSearchParams(location.search).get("q");
     if (initial) inputEl.value = initial;

@@ -27,3 +27,14 @@ function show(query) {
 console.log("\n规范化抽查：");
 ["小米10至尊版", "小米10至臻版", "荣耀 魔术VS 至臻版", "iPhone17 Air", "Galaxy S20+"]
   .forEach((t) => console.log(`  ${t}  ->  ${api.norm(t)}  |  core=${api.core(t)}`));
+
+// 输入联想
+const sugg = api.buildSuggestions(index.boxes);
+console.log(`\n联想候选共 ${sugg.length} 条\n`);
+["i", "ip", "iphone 11", "红米k8", "mate30", "苹果1", "y30"].forEach((q) => {
+  const r = api.suggest(sugg, q, 8);
+  console.log(`输入「${q}」 共 ${r.total} 条，前几条：`);
+  r.items.forEach((it) => console.log(
+    `   ${it.text}${it.alt.length ? "（" + it.alt.join("、") + "）" : ""}  → ${it.boxes.slice(0, 4).join(" ")}${it.boxes.length > 4 ? " 等" : ""}`
+  ));
+});

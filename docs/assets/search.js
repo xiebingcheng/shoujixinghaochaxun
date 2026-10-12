@@ -160,5 +160,92 @@
     return { q, query: rawQuery, exact, fuzzy };
   }
 
-  return { norm, core, makeIndex, search, score, PREFIX_ORDER };
+  /**
+   * 输入联想用的候选表：把所有型号（含箱名、别名写法）去重后汇总，
+   * 每项记录它出现在哪些箱号里。
+   */
+  function buildSuggestions(boxes) {
+    const map = new Map();
+    const add = (isModel, key, coreKey, text, boxId) => {
+      if (!key) return;
+      let e = map.get(key);
+      if (!e) {
+        e = { id: key, ns: isModel ? "m" : "name", k: key, core: coreKey, texts: [], raws: [], boxes: [] };
+        map.set(key, e);
+      }
+      if (isModel) e.ns = "m"; // 型号和箱名撞名时按型号处理
+      const raw = String(text).toLowerCase().replace(/\s+/g, "");
+      if (!e.texts.includes(text)) {
+        e.texts.push(text);
+        e.raws.push(raw);
+      }
+      if (boxId && !e.boxes.includes(boxId)) e.boxes.push(boxId);
+    };
+    for (const box of boxes) {
+      for (const m of box.models) {
+        add(true, m.k, m.c, m.t, box.id);
+        for (const alt of m.alt || []) add(true, m.k, m.c, alt, box.id);
+      }
+      add(false, box.nk, box.nc, box.name, box.id);
+    }
+    return Array.from(map.values());
+  }
+
+  /**
+   * 联想查询：输入 "i" 就能列出所有以 i 开头的机型（含别名写法）。
+   * 返回 { items: [{ id, text, boxes, type, tier }], total }
+   */
+  function suggest(list, rawQuery, limit) {
+    const q = norm(rawQuery);
+    if (!q) return { items: [], total: 0 };
+    const qc = core(rawQuery);
+    const useCore = qc.length >= 3 && /[a-z]/.test(qc);
+    const qraw = String(rawQuery).trim().toLowerCase().replace(/\s+/g, "");
+
+    const scored = [];
+    for (const e of list) {
+      let tier = -1;
+      if (e.k === q) tier = 0;
+      else if (useCore && e.core === qc) tier = 1;
+      else if (qraw && e.raws.some((r) => r.startsWith(qraw))) tier = 2;
+      else if (e.k.startsWith(q)) tier = 3;
+      else if (useCore && e.core.startsWith(qc)) tier = 4;
+      else if (qraw.length >= 2 && e.raws.some((r) => r.includes(qraw))) tier = 5;
+      else if (e.k.includes(q)) tier = 6;
+      else if (useCore && e.core.includes(qc)) tier = 7;
+      if (tier < 0) continue;
+      scored.push({ e, tier });
+    }
+
+    scored.sort((a, b) =>
+      a.tier - b.tier ||
+      (a.e.ns === b.e.ns ? 0 : a.e.ns === "m" ? -1 : 1) ||
+      a.e.texts[0].length - b.e.texts[0].length ||
+      (a.e.texts[0] < b.e.texts[0] ? -1 : 1)
+    );
+
+    const max = limit || 30;
+    return {
+      total: scored.length,
+      items: scored.slice(0, max).map(({ e, tier }) => {
+        // 显示与用户输入最接近的那种写法（例如输入“苹果”就显示“苹果13”而不是“iPhone13”）
+        let text = e.texts[0];
+        if (qraw) {
+          const starts = e.texts.find((t) => t.toLowerCase().replace(/\s+/g, "").startsWith(qraw));
+          const has = e.texts.find((t) => t.toLowerCase().replace(/\s+/g, "").includes(qraw));
+          text = starts || has || text;
+        }
+        return {
+          id: e.id,
+          text,
+          alt: e.texts.filter((t) => t !== text).slice(0, 2),
+          boxes: e.boxes,
+          type: e.ns === "name" ? "name" : "model",
+          tier,
+        };
+      }),
+    };
+  }
+
+  return { norm, core, makeIndex, search, suggest, buildSuggestions, score, PREFIX_ORDER };
 });

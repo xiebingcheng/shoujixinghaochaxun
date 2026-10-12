@@ -62,6 +62,7 @@ body {
 
 /* 搜索框 */
 .search {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -103,6 +104,73 @@ body {
 
 .search-btn:active { transform: scale(0.95); }
 .search-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
+/* 输入联想下拉框 */
+.suggest {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 4px 0;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 26px rgba(10, 40, 70, 0.22);
+  color: var(--text);
+  text-align: left;
+  -webkit-overflow-scrolling: touch;
+}
+
+.suggest[hidden] { display: none; }
+
+.s-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.s-item.active,
+.s-item:hover { background: #f1f7fd; }
+
+.s-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  color: #17222e;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.s-boxes {
+  flex: none;
+  font-size: 11.5px;
+  color: #8fa0b2;
+  white-space: nowrap;
+}
+
+.s-tag {
+  font-size: 10.5px;
+  color: #fff;
+  background: #8fa6bb;
+  border-radius: 4px;
+  padding: 0 5px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+
+.s-more {
+  padding: 8px 14px 6px;
+  font-size: 12px;
+  color: #93a3b4;
+  text-align: center;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
 
 /* 前缀筛选 */
 .tabs {
