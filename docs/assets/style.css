@@ -12,6 +12,9 @@
   --radius: 14px;
   --shadow: 0 2px 10px rgba(19, 52, 84, 0.08);
   --safe-top: env(safe-area-inset-top, 0px);
+  /* 头部是 fixed 定位，这里给页面留出「展开态头部」的高度，
+     实际数值由 app.js 量出来后覆盖，见下面 .app-header 的注释 */
+  --header-space: 184px;
 }
 
 * { box-sizing: border-box; }
@@ -23,14 +26,20 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 15px/1.5 "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  padding-top: var(--header-space);
   padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   -webkit-tap-highlight-color: transparent;
 }
 
 /* ---------------------------------------------------------------- 顶部 */
+/* 头部固定在天花板，页面用一个不变的留白顶住。
+   这样滚动折叠只改变头部自身，不会改变文档高度 —— 否则浏览器为了稳住
+   画面会把滚动位置往回拽（滚动锚定），把头部在展开／收起之间来回弹。 */
 .app-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 20;
   padding: calc(14px + var(--safe-top)) 14px 10px;
   background: linear-gradient(180deg, var(--blue-dark), var(--blue) 70%, #2b7cc0);

@@ -538,11 +538,31 @@
     if (card && card.dataset.id) toggleBox(card.dataset.id);
   });
 
+  /** 量出「展开态」头部有多高，给页面留同样多的上边距（收起时不再改变文档高度） */
+  function syncHeaderSpace() {
+    const compact = headerEl.classList.contains("compact");
+    headerEl.classList.remove("compact");
+    const h = Math.round(headerEl.getBoundingClientRect().height);
+    if (compact) headerEl.classList.add("compact");
+    document.documentElement.style.setProperty("--header-space", h + "px");
+  }
+
+  // 头部折叠：阈值特意留了回差（下滚 >60 收起、回到 <20 展开），
+  // 而且收起只让头部自己变矮、文档高度不变，所以不会被滚动锚定拽回去。
+  let headerCompact = false;
   window.addEventListener("scroll", () => {
     const y = window.scrollY;
-    headerEl.classList.toggle("compact", y > 30);
+    if (!headerCompact && y > 60) headerCompact = true;
+    else if (headerCompact && y < 20) headerCompact = false;
+    headerEl.classList.toggle("compact", headerCompact);
     toTopEl.classList.toggle("show", y > 700);
   }, { passive: true });
+
+  // 屏幕旋转、窗口尺寸变化、字体加载完都可能让头部变高变矮，重量一次即可
+  window.addEventListener("resize", syncHeaderSpace);
+  window.addEventListener("orientationchange", () => setTimeout(syncHeaderSpace, 200));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncHeaderSpace);
+  syncHeaderSpace();  // 先按「标签栏还没建好」的头部量一次，数据到了会再量一次
 
   toTopEl.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
@@ -595,6 +615,8 @@
     state.boxById = new Map(state.index.boxes.map((b) => [b.id, b]));
     state.suggestList = window.BoxSearch.buildSuggestions(state.index.boxes);
     buildTabs();
+    // 标签栏建好之后头部才是最终高度，这时量一次留白
+    syncHeaderSpace();
     const initial = new URLSearchParams(location.search).get("q");
     if (initial) inputEl.value = initial;
     runSearch(false);

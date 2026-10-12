@@ -129,6 +129,31 @@ const logs = [];
   console.log("点击选中后输入框:", await page.inputValue("#q"), "| 摘要:", await page.textContent("#summary"));
   console.log("下拉是否关闭:", await page.locator("#suggest").isHidden());
 
+  // 7. 头部滚动折叠：连续下滚只该收起一次，而且折叠不能改变文档高度
+  //    （一改高度就会被浏览器的滚动锚定拽回去，头部在展开／收起之间来回弹）
+  await page.fill("#q", "");
+  await page.waitForTimeout(300);
+  const header = await page.evaluate(async () => {
+    const el = document.getElementById("header");
+    let flips = 0;
+    const mo = new MutationObserver(() => { flips += 1; });
+    mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+    window.scrollTo(0, 0);
+    await new Promise((r) => setTimeout(r, 300));
+    const docH0 = document.documentElement.scrollHeight;
+    for (let y = 0; y <= 300; y += 5) {
+      window.scrollTo(0, y);
+      await new Promise((r) => setTimeout(r, 16));
+    }
+    await new Promise((r) => setTimeout(r, 400));
+    const docH1 = document.documentElement.scrollHeight;
+    mo.disconnect();
+    window.scrollTo(0, 0);
+    return { flips, docH0, docH1 };
+  });
+  console.log("连续下滚 0→300px 头部折叠次数:", header.flips, "(应为 1)");
+  console.log("  下滚前后文档高度:", header.docH0, "→", header.docH1, "(应相等)");
+
   console.log("控制台错误:", logs.length ? logs.join(" | ") : "无");
   await browser.close();
 })();
