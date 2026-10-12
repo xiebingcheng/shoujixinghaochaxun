@@ -76,6 +76,18 @@ const logs = [];
   await page.waitForTimeout(350);
   console.log("搜「S61」可替代箱号:", JSON.stringify(await page.locator('#results .card-sub[data-id="S58"] .card-sub-note').allTextContents()));
 
+  // S59 既是别人的可替代箱号，自己也有可替代箱号 S64
+  await page.fill("#q", "荣耀X70");
+  await page.waitForTimeout(400);
+  const s59 = page.locator('#results .card:not(.card-sub)[data-id="S59"]');
+  console.log("搜「荣耀X70」→ S59 卡片上的替代箱号:", JSON.stringify(await s59.locator(".sub-link").allTextContents()));
+  console.log("  可替代卡片:", JSON.stringify(await page.locator('#results .card-sub[data-id="S64"] .card-sub-note').allTextContents()));
+  await page.fill("#q", "荣耀Magic7");
+  await page.waitForTimeout(400);
+  console.log("搜「荣耀Magic7」→ S48 的可替代卡片:",
+    JSON.stringify(await page.locator('#results .card-sub').allTextContents()),
+    "| 说明:", JSON.stringify(await page.locator('#results .card-sub-note').allTextContents()));
+
   // 关键回归：搜 MATE80PROMAX 时 S70 只是“相近结果”，不能把 S70 的可替代箱号 S42 带出来
   await page.fill("#q", "MATE80PROMAX");
   await page.waitForTimeout(400);
@@ -93,7 +105,7 @@ const logs = [];
 
   await page.fill("#q", "");
   await page.waitForTimeout(350);
-  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-link)").count(), "(应为 15)");
+  console.log("浏览视图里有替代关系的卡片数:", await page.locator("#results .card:has(.sub-link)").count(), "(应为 16)");
   console.log("  浏览视图里没有可替代分组:", await page.locator("#results .card-sub").count(), "(应为 0)");
 
   // 5. 320px 窄屏截图
