@@ -1,0 +1,15 @@
+/* 全局基础样式：配色沿用网页版 */
+page {
+  background: #eef3f8;
+  color: #1d2b3a;
+  font-size: 28rpx;
+  line-height: 1.55;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+view,
+text,
+input {
+  box-sizing: border-box;
+}

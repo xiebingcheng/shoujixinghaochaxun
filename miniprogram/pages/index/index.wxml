@@ -1,0 +1,153 @@
+<view class="page">
+  <view class="header {{compact ? 'compact' : ''}}">
+    <view class="header-inner">
+      <view class="title-row">
+        <view class="app-title">手机型号查箱号</view>
+        <view class="clear" wx:if="{{q}}" catchtap="onClear">清空</view>
+      </view>
+      <view class="app-sub" wx:if="{{!compact}}">
+        {{mode === 'size' ? '按屏幕尺寸找箱号：输型号或直接输尺寸，如 6.5' : '输入手机型号或箱号，查出所在箱子'}}
+      </view>
+
+      <view class="modes" wx:if="{{!compact}}">
+        <view class="mode {{mode === 'model' ? 'on' : ''}}" data-mode="model" catchtap="onModeTap">型号查箱号</view>
+        <view class="mode {{mode === 'size' ? 'on' : ''}}" data-mode="size" catchtap="onModeTap">尺寸查箱号</view>
+      </view>
+
+      <view class="search">
+        <input class="search-input" value="{{q}}" type="text" confirm-type="search"
+               placeholder="{{mode === 'size' ? '手机型号或屏幕尺寸，如 红米10A、6.5' : '手机型号或箱号，如 Mate30Pro、S01'}}"
+               placeholder-class="ph"
+               bindinput="onInput" bindconfirm="onConfirm"
+               bindfocus="onFocus" bindblur="onBlur" />
+        <view class="search-btn" catchtap="submit">
+          <text class="search-icon">🔍</text>
+        </view>
+
+        <view class="suggest" wx:if="{{!suggestHidden}}">
+          <view class="s-item" wx:for="{{suggestItems}}" wx:key="k"
+                data-item="{{item}}" catchtap="onSuggestTap">
+            <view class="s-text">
+              <block wx:for="{{item.segs}}" wx:for-item="s" wx:key="k">
+                <text class="{{s.hit ? 'mk' : ''}}">{{s.t}}</text>
+              </block>
+              <text class="s-tag" wx:if="{{item.isName}}">箱名</text>
+              <text class="alt" wx:if="{{item.altText}}">（{{item.altText}}）</text>
+            </view>
+            <view class="s-boxes">{{item.boxes}}</view>
+          </view>
+          <view class="s-more" wx:if="{{suggestMore > 0}}">
+            还有 {{suggestMore}} 条匹配，继续输入可缩小范围
+          </view>
+        </view>
+      </view>
+
+      <view class="tabs" wx:if="{{!compact}}">
+        <view class="tab {{prefix === t.key ? 'on' : ''}}" wx:for="{{tabs}}" wx:key="key"
+              data-prefix="{{t.key}}" catchtap="onTab">
+          {{t.label}}<text class="tab-num">{{t.count}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="main">
+    <view class="summary" wx:if="{{summary}}">{{summary}}</view>
+    <view class="notice" wx:if="{{notice}}">{{notice}}</view>
+
+    <view class="empty" wx:if="{{empty}}">
+      <view class="empty-icon">🔍</view>
+      <view class="empty-title">{{empty.title}}</view>
+      <view class="empty-hint">{{empty.hint}}</view>
+      <view class="examples" wx:if="{{mode === 'size'}}">
+        <view class="example" wx:for="{{sizeExamples}}" wx:key="*this"
+              data-q="{{item}}" catchtap="onSizeExample">{{item}}″</view>
+        <view class="example" wx:for="{{sizeModelExamples}}" wx:key="*this"
+              data-q="{{item}}" catchtap="onExample">{{item}}</view>
+      </view>
+      <view class="examples" wx:else>
+        <view class="example" wx:for="{{examples}}" wx:key="*this"
+              data-q="{{item}}" catchtap="onExample">{{item}}</view>
+      </view>
+    </view>
+
+    <block wx:for="{{groups}}" wx:for-item="group" wx:key="k">
+      <view class="group-title">{{group.title}}</view>
+
+      <view class="card {{card.open ? 'card-open' : ''}} {{card.isSub ? 'card-sub' : ''}}"
+            wx:for="{{group.cards}}" wx:for-item="card" wx:key="id"
+            data-id="{{card.id}}" bindtap="onCardTap">
+        <view class="badge {{card.badgeCls}}">{{card.id}}<text class="badge-size"
+              wx:if="{{card.sizeText}}">{{card.sizeText}}</text></view>
+        <view class="card-body">
+          <view class="card-head">
+            <text class="card-name">{{card.name}}</text>
+            <text class="tag-sub" wx:if="{{card.isSub}}">可替代</text>
+            <text class="tag-size size-{{card.levelKey}}" wx:if="{{card.isSize}}">{{card.levelLabel}}</text>
+          </view>
+
+          <view class="sub-note" wx:if="{{card.isSub}}">
+            <block wx:for="{{card.subFroms}}" wx:for-item="f" wx:key="k">
+              <text class="sub-link" data-sub="{{f.id}}" catchtap="onSubTap">{{f.id}}</text>
+              <text>（{{f.name}}）</text>
+            </block>
+            <text>{{card.subNote}}</text>
+          </view>
+
+          <view class="preview" wx:if="{{card.preview}}">{{card.preview}}</view>
+
+          <view class="size-hit" wx:if="{{card.isSize && !card.open}}">
+            箱内最接近：{{card.sizeHitModel}} · {{card.sizeHitInch}}
+            <text class="size-diff">{{card.sizeHitDiff}}</text>
+          </view>
+
+          <view class="hits" wx:if="{{card.hits.length}}">
+            <view class="hit {{h.exact ? 'exact' : ''}}" wx:for="{{card.hits}}" wx:for-item="h" wx:key="k">
+              <block wx:if="{{h.segs}}">
+                <block wx:for="{{h.segs}}" wx:for-item="s" wx:key="k">
+                  <text class="{{s.hit ? 'mk' : ''}}">{{s.t}}</text>
+                </block>
+              </block>
+              <text wx:else>{{h.t}}</text>
+              <text class="size-tag" wx:if="{{h.sizeText}}">{{h.sizeText}}</text>
+              <text class="alt" wx:if="{{h.altText}}">（另一写法：{{h.altText}}）</text>
+            </view>
+          </view>
+
+          <view class="hits" wx:if="{{card.rest.length}}">
+            <view class="rest-label">{{card.restLabel}}</view>
+            <view class="hit rest" wx:for="{{card.rest}}" wx:for-item="r" wx:key="k">
+              {{r.t}}<text class="alt" wx:if="{{r.altText}}">（另一写法：{{r.altText}}）</text>
+            </view>
+          </view>
+
+          <view class="more" wx:if="{{card.moreLabel}}"
+                data-id="{{card.id}}" catchtap="onMore">{{card.moreLabel}}</view>
+
+          <view class="card-foot">
+            <text class="card-meta" wx:if="{{card.footMeta}}">{{card.footMeta}}</text>
+            <view class="copy-btn" data-copy="{{card.copyId}}" catchtap="onCopy">复制箱号</view>
+          </view>
+
+          <view class="subs" wx:if="{{card.subs.length}}">
+            <text class="subs-label">可替代箱号</text>
+            <view class="sub-link" wx:for="{{card.subs}}" wx:for-item="u" wx:key="k"
+                  data-sub="{{u.id}}" catchtap="onSubTap">
+              <text class="sub-id">{{u.id}}</text>
+              <text class="sub-name" wx:if="{{u.name}}">{{u.name}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="list-note" wx:for="{{notes}}" wx:key="*this">{{item}}</view>
+
+    <view class="footer">
+      <view>点卡片可展开箱内机型 · 数据来自两份人工统计表交叉核对</view>
+      <view wx:if="{{generatedAt}}">数据更新于 {{generatedAt}}</view>
+    </view>
+  </view>
+
+  <view class="to-top {{toTop ? 'show' : ''}}" catchtap="onToTop">↑</view>
+</view>
