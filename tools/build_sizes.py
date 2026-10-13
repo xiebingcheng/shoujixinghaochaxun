@@ -35,6 +35,9 @@ COVERAGE_MIN = 0.6   # 覆盖率达到 60% 才认这一箱
 AGREEMENT_MIN = 0.6  # 落在同一尺寸档的型号占比达到 60% 才认
 TOLERANCE = 0.1      # 相差 0.1 英寸以内算「同一档」屏幕
 
+# 这些不是具体机型，是表格里的占位词（折叠屏箱子里都写着它），不参与尺寸统计
+PLACEHOLDERS = {"折叠屏", "折叠屏前屏"}
+
 # ---------------------------------------------------------------- 规范化（必须与 assets/search.js、tools/build_data.py 保持一致）
 BRAND_ALIASES = [
     ("华为", "huawei"), ("荣耀", "honor"), ("小米", "xiaomi"), ("红米", "redmi"),
@@ -91,9 +94,10 @@ def main():
     no_cover, no_agree = [], []
 
     for box in boxes_data["boxes"]:
-        total = len(box["models"])
+        models = [m for m in box["models"] if m["t"] not in PLACEHOLDERS]
+        total = len(models)
         known = []
-        for m in box["models"]:
+        for m in models:
             key = m.get("k") or norm(m["t"])
             inch = model_size.get(key)
             if inch is None:
@@ -157,6 +161,19 @@ def main():
           f"型号尺寸覆盖 {st['modelCoverage'] * 100:.1f}%")
 
     # ------------------------------------------------------------ 报告
+    # 统计有多少条是 tools/lookup_sizes.py 搜索补进来的（草稿文件还在的话）
+    searched = set()
+    draft_path = os.path.join(os.path.dirname(REPORT_PATH), "尺寸查询草稿.json")
+    if os.path.exists(draft_path):
+        try:
+            for it in load_json(draft_path).get("items", []):
+                if it.get("inch"):
+                    for n in it.get("names", []):
+                        if n in raw_models:
+                            searched.add(n)
+        except Exception:
+            pass
+
     lines = ["# 屏幕尺寸覆盖报告", "",
              f"生成时间：{payload['generatedAt']}",
              f"数据来源：`docs/data/model-sizes.json`（型号 → 英寸）", "",
@@ -165,7 +182,9 @@ def main():
              f"- 能算出代表尺寸的箱号：**{st['boxesWithSize']}**"
              f"（覆盖率 ≥ {COVERAGE_MIN:.0%} 且尺寸一致率 ≥ {AGREEMENT_MIN:.0%}）",
              f"- 箱内型号的尺寸覆盖率：**{st['modelCoverage'] * 100:.1f}%**",
-             f"- 有尺寸数据还没人工核对的型号：{len(raw_models)} 条（初版由规则生成）", ""]
+             f"- 尺寸表共 {len(raw_models)} 条：{len(searched)} 条由 `tools/lookup_sizes.py` "
+             f"搜索得到，其余按机型系列规则生成",
+             "- ⚠️ 两种来源都**没有逐条人工核对**，数值仅供参考，建议照下面的清单抽查", ""]
 
     if conflicts:
         lines += ["## 同一个型号被写成了不同尺寸（请核对）", ""]
@@ -196,6 +215,8 @@ def main():
     for box in boxes_data["boxes"]:
         miss = []
         for m in box["models"]:
+            if m["t"] in PLACEHOLDERS:
+                continue
             key = m.get("k") or norm(m["t"])
             if model_size.get(key) is None and model_size.get(norm(m["t"])) is None:
                 miss.append(m["t"])

@@ -29,11 +29,13 @@ docs/                      ← 网站本体（GitHub Pages 发布这个目录）
 tools/build_data.py        ← 把表格生成 JSON + 数据核对报告
 tools/gen_model_sizes.py   ← 生成「型号 → 屏幕尺寸」初版（批量补充用）
 tools/build_sizes.py       ← 算出每个箱号的代表尺寸 + 覆盖率报告
+tools/lookup_sizes.py      ← 用 opencli 的 Google 搜索批量查缺的屏幕尺寸（产出草稿）
 tools/check_search.js      ← 搜索逻辑自测
 tools/check_size.js        ← 尺寸查箱号功能自测（需要先起本地服务）
 tools/inspect_data.py      ← 查看表格结构
 reports/数据核对报告.md      ← d 版 / q 版 两份数据的差异清单
 reports/屏幕尺寸覆盖报告.md  ← 屏幕尺寸覆盖情况 / 待补清单
+reports/尺寸查询草稿.md      ← 搜索查到的尺寸草稿（人工核对用）
 ```
 
 ## 本地预览
@@ -179,8 +181,9 @@ node tools/check_mp.js         # 小程序版自测
 3. 把尺寸按 0.1 英寸滑动分档，取型号最多的那一档；
 4. 这一档的占比低于 **60%** → 说明箱内尺寸不统一，也不给结论。
 
-目前 129 个箱号里 **84 个**能算出尺寸。没算出的大多是 2026 年新机型（尺寸还没录进去）
-或箱内型号跨度确实很大的箱子，明细见 `reports/屏幕尺寸覆盖报告.md`。
+目前 129 个箱号里 **121 个**能算出尺寸，箱内型号的尺寸覆盖率 **99.3%**。
+没算出的 8 个是：7 个箱内型号尺寸本来就跨得大（含 L07/L09/L14 这类上千条型号的大杂箱），
+1 个折叠屏箱子（Y16，内外屏尺寸不同）。明细见 `reports/屏幕尺寸覆盖报告.md`。
 
 ### 维护屏幕尺寸数据
 
@@ -196,5 +199,17 @@ node tools/check_mp.js         # 小程序版自测
 `reports/屏幕尺寸覆盖报告.md` 会列出：哪些型号还没有尺寸、哪些箱号尺寸不统一
 （多半是箱内型号数据本身有问题）、哪些型号被写成了两个不同的尺寸。
 
-初版尺寸表由 `tools/gen_model_sizes.py` 按机型系列规则生成，**没经过人工核对**，
-数字仅供参考，建议照着报告逐箱核对一遍。
+### 新机型上市后怎么补尺寸
+
+```powershell
+python tools/lookup_sizes.py            # 用 opencli 的 Google 搜索把缺的型号查一遍
+python tools/lookup_sizes.py --refresh  # 忽略缓存重查
+```
+
+它会输出 `reports/尺寸查询草稿.json` / `.md`，每条带分数和依据（官网/参数页会加分）。
+**草稿不会自动写进正式数据**——搜索结果里混着「折叠屏外屏尺寸、上代机型、爆料数字」
+这类噪声，必须人工过一眼再合并进 `model-sizes.json`。
+
+尺寸表目前有两个来源：`tools/gen_model_sizes.py` 按机型系列规则生成的初版，
+以及 `tools/lookup_sizes.py` 搜索补的。**两种都还没逐条人工核对**，
+数值仅供参考，建议照着报告抽几条验一下。
