@@ -46,7 +46,8 @@ function check(label, actual, expected) {
   const n = await cards.count();
   check("6.5 有结果", n > 0, true);
   const first = cards.first();
-  check("卡片带尺寸标签", await first.locator(".badge-size").count(), 1);
+  check("卡片带尺寸标签", await first.locator(".card-size").count(), 1);
+  check("箱号徽标上不再叠尺寸", await first.locator(".badge .card-size").count(), 0);
   console.log("  第一张卡片:", (await first.innerText()).replace(/\s+/g, " ").trim().slice(0, 80));
   check("有免责提示", (await page.locator("#results .notice").count()) > 0, true);
 
@@ -98,12 +99,12 @@ function check(label, actual, expected) {
   await page.click('.mode[data-mode="model"]');
   await page.waitForTimeout(350);
   check("URL 去掉 mode", new URL(page.url()).searchParams.get("mode"), null);
-  const chips = await page.locator("#results .card .badge-size").count();
+  const chips = await page.locator("#results .card .card-size").count();
   check("浏览视图有尺寸标签", chips > 0, true);
   console.log("  浏览视图尺寸标签数:", chips, "/ 卡片数:", await page.locator("#results .card").count());
-  const foldLines = await page.locator('#results .card[data-id="Y18"] .badge-size-2 .sz-line').allTextContents();
-  check("折叠屏箱号 Y18 标出内/外两行", foldLines.length, 2);
-  console.log("  Y18 标签:", foldLines.join(" / "));
+  const foldText = await page.locator('#results .card[data-id="Y18"] .card-size').textContent();
+  check("折叠屏箱号 Y18 标出内/外", /内\s*7\.8″\s*\/\s*外\s*6\.3″/.test(foldText), true);
+  console.log("  Y18 标签:", foldText);
 
   // 8b. 折叠屏：搜外屏尺寸要标「外屏匹配」，搜内屏尺寸标「内屏匹配」
   await page.click('.mode[data-mode="size"]');
@@ -118,6 +119,12 @@ function check(label, actual, expected) {
   const y18out = page.locator('#results .card[data-id="Y18"]');
   check("搜 6.31 标记外屏", await y18out.locator(".tag.kind-outer").count(), 1);
   console.log("  ", (await y18out.innerText()).replace(/\s+/g, " ").trim().slice(0, 72));
+  // 竖折（Pura X）外屏只有 3.5 英寸，尺寸下限要覆盖到
+  await page.fill("#q", "3.5");
+  await page.waitForTimeout(400);
+  const s89 = page.locator('#results .card[data-id="S89"]');
+  check("搜 3.5（竖折外屏）命中 S89", await s89.locator(".tag.kind-outer").count(), 1);
+  console.log("  ", (await s89.innerText()).replace(/\s+/g, " ").trim().slice(0, 72));
   await page.click('.mode[data-mode="model"]');
   await page.waitForTimeout(250);
   await page.fill("#q", "");

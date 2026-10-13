@@ -130,37 +130,38 @@
     return (Math.round(Number(n) * 10) / 10).toFixed(1);
   }
 
-  /** 箱号右上角的屏幕尺寸标签；没有可靠尺寸时不显示 */
-  function sizeChip(box) {
+  /**
+   * 卡片右上角的屏幕尺寸标签。特意不放在箱号徽标上——折叠屏要写「内/外」两段，
+   * 压在徽标上会把箱号挡住看不清。没有可靠尺寸时不显示。
+   */
+  function sizeTag(box) {
     const info = state.sizes && state.sizes.boxes && state.sizes.boxes[box.id];
     if (!info || !info.ok || !info.inch) return "";
     const fold = info.inner && info.outer;
-    let lines;
+    let text;
     let title;
     if (fold) {
-      lines = [`内 ${oneInch(info.inner)}″`, `外 ${oneInch(info.outer)}″`];
+      text = `内 ${oneInch(info.inner)}″ / 外 ${oneInch(info.outer)}″`;
       title = `折叠屏：内屏约 ${oneInch(info.inner)}″，外屏约 ${oneInch(info.outer)}″`;
     } else {
       const [lo, hi] = info.range || [];
       const wide = hi !== undefined && Math.round(hi * 10) - Math.round(lo * 10) >= 2;
-      const text = wide ? `${oneInch(lo)}-${oneInch(hi)}″` : `${oneInch(info.inch)}″`;
-      lines = [text];
+      text = wide ? `${oneInch(lo)}-${oneInch(hi)}″` : `${oneInch(info.inch)}″`;
       title = `这一箱的屏幕约 ${text}（按箱内 ${info.known}/${info.total} 个型号统计）`;
     }
-    const body = lines.map((t) => `<span class="sz-line">${esc(t)}</span>`).join("");
-    return `<span class="badge-size${fold ? " badge-size-2" : ""}" title="${esc(title)}">${body}</span>`;
+    return `<span class="card-size${fold ? " fold" : ""}" title="${esc(title)}">` +
+      `${esc(text)}</span>`;
   }
 
   /** small：浏览列表里的小号徽标；toggle：箱号变成可点开的按钮 */
   function badge(box, small, toggle) {
     const size = small ? " badge-sm" : "";
     const cls = `badge badge-${box.prefix.toLowerCase()}${size}`;
-    const chip = sizeChip(box);
-    if (!toggle) return `<div class="${cls}">${esc(box.id)}${chip}</div>`;
+    if (!toggle) return `<div class="${cls}">${esc(box.id)}</div>`;
     const open = state.expanded.has(box.id);
     return `<button class="${cls} badge-btn" type="button" data-toggle="${esc(box.id)}" ` +
       `aria-expanded="${open}" aria-label="展开 ${esc(box.id)} 箱内的机型" ` +
-      `title="点开查看 ${esc(box.id)} 箱里的机型">${esc(box.id)}${chip}</button>`;
+      `title="点开查看 ${esc(box.id)} 箱里的机型">${esc(box.id)}</button>`;
   }
 
   /** 卡片底部：左边一句说明，右边「收起 / 复制箱号」按钮 */
@@ -236,6 +237,7 @@
           <div class="card-head">
             <span class="card-name">${name}</span>
             <span class="tag sub">可替代</span>
+            ${sizeTag(box)}
           </div>
           <div class="card-sub-note">${fromText}缺货时，可以用本箱里的机型替代</div>
           <ul class="hits">${lines}</ul>
@@ -283,6 +285,7 @@
           <div class="card-head">
             <span class="card-name">${name}</span>
             ${sourceTag(result.hits)}
+            ${sizeTag(box)}
           </div>
           <ul class="hits">${lines}${restHTML}</ul>
           ${more}
@@ -318,7 +321,10 @@
       <article class="card${open ? " card-open" : ""}" data-id="${esc(box.id)}">
         ${badge(box, true, true)}
         <div class="card-body">
-          <div class="card-head"><span class="card-name">${name}</span></div>
+          <div class="card-head">
+            <span class="card-name">${name}</span>
+            ${sizeTag(box)}
+          </div>
           ${body}
           ${foot}
           ${subsHTML(box)}
@@ -354,7 +360,8 @@
     const s = String(text).trim().replace(/英寸|寸|"|″/g, "").trim();
     if (!/^\d(?:\.\d{1,2})?$/.test(s)) return null;
     const n = parseFloat(s);
-    return n >= 4 && n <= 9 ? n : null;
+    // 下限放到 3 英寸：竖折机型的外屏只有 3.5 英寸左右
+    return n >= 3 && n <= 9.9 ? n : null;
   }
 
   function modelSize(key) {
@@ -494,6 +501,7 @@
             <span class="card-name">${name}</span>
             <span class="tag size-${level.key}">${level.label}</span>
             ${kindTag}
+            ${sizeTag(box)}
           </div>
           ${body}
           ${footHTML(box, open ? undefined : "点箱号展开箱内机型", open && box.models.length > 12)}

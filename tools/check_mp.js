@@ -178,8 +178,8 @@ if (pageDef) {
   const y18in = flat().find((c) => c.id === "Y18");
   ok("搜 7.82 命中 Y18 内屏", !!y18in && y18in.kindKey === "inner",
     y18in ? y18in.kindLabel + " " + y18in.sizeHitInch : "（没有 Y18）");
-  ok("Y18 箱号右上角是内/外两行", !!y18in && y18in.sizeLines.length === 2,
-    y18in ? y18in.sizeLines.join(" / ") : "");
+  ok("Y18 卡片右上角标出内/外", !!y18in && y18in.sizeLines.length === 2,
+    y18in ? y18in.sizeText : "");
   inst.onSizeExample(tap({ q: "6.31" }));
   const y18out = flat().find((c) => c.id === "Y18");
   ok("搜 6.31 命中 Y18 外屏", !!y18out && y18out.kindKey === "outer",

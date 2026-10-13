@@ -623,39 +623,26 @@ mark {
 }
 
 /* ---------------------------------------------------------------- 屏幕尺寸相关 */
-/* 箱号右上角的屏幕尺寸标签 */
-.badge { position: relative; }
-
-.badge-size {
-  position: absolute;
-  top: -7px;
-  right: -8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.3;
-  padding: 1px 5px;
+/* 卡片右上角的屏幕尺寸标签：放在标题行最右侧，不压在箱号上 */
+.card-size {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 7px;
   border-radius: 999px;
-  background: #fff;
-  color: #14324d;
-  border: 1px solid rgba(20, 60, 100, 0.16);
-  font-size: 10px;
+  background: #eef4fa;
+  border: 1px solid #d3e2f0;
+  color: #2c5f8d;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0;
-  text-shadow: none;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
   white-space: nowrap;
 }
 
-/* 折叠屏：内屏一行、外屏一行 */
-.badge-size-2 {
-  border-radius: 8px;
-  font-size: 9px;
-  padding: 2px 4px;
-  letter-spacing: -0.2px;
+/* 折叠屏写「内 / 外」两段，换个颜色区分 */
+.card-size.fold {
+  background: #f3eeff;
+  border-color: #ded0ff;
+  color: #6a3ecb;
 }
-
-.badge-size-2 .sz-line { display: block; }
 
 .tag.size-same { background: #2f9e6f; }
 .tag.size-close { background: #d98a17; }

@@ -41,6 +41,11 @@ function boxSizeLines(box) {
   return [oneInch(info.inch) + "″"];
 }
 
+/** 箱号卡片右上角的一行文字：普通「6.5″」，折叠屏「内 6.3″ / 外 3.5″」 */
+function boxSizeText(box) {
+  return boxSizeLines(box).join(" / ");
+}
+
 function modelSize(key) {
   const v = sizesData && sizesData.models && sizesData.models[key];
   if (typeof v === "number") return v;
@@ -75,7 +80,8 @@ function parseSizeQuery(text) {
   const s = String(text || "").trim().replace(/英寸|寸|"|″/g, "").trim();
   if (!/^\d(?:\.\d{1,2})?$/.test(s)) return null;
   const n = parseFloat(s);
-  return n >= 4 && n <= 9 ? n : null;
+  // 下限放到 3 英寸：竖折机型的外屏只有 3.5 英寸左右
+  return n >= 3 && n <= 9.9 ? n : null;
 }
 
 function sizeLevel(d) {
@@ -249,6 +255,7 @@ function resultCard(result, tokens, expanded, withSubs) {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
     sizeLines: boxSizeLines(box),
+    sizeText: boxSizeText(box),
     name: box.name || "未命名箱",
     open,
     isSub: false,
@@ -277,6 +284,7 @@ function subCard(box, froms, expanded) {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
     sizeLines: boxSizeLines(box),
+    sizeText: boxSizeText(box),
     name: box.name || "未命名箱",
     open,
     isSub: true,
@@ -316,6 +324,7 @@ function browseCard(box, expanded) {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
     sizeLines: boxSizeLines(box),
+    sizeText: boxSizeText(box),
     name: box.name || "未命名箱",
     open,
     isSub: false,
@@ -489,6 +498,7 @@ function sizeCard(item, expanded) {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
     sizeLines: boxSizeLines(box),
+    sizeText: boxSizeText(box),
     name: box.name || "未命名箱",
     open,
     isSub: false,
