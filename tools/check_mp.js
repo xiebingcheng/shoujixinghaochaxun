@@ -164,6 +164,11 @@ if (pageDef) {
   inst.onSizeExample(tap({ q: "红米10A" }));
   ok("输型号会先查它的屏幕尺寸", /屏幕约/.test(inst.data.summary), inst.data.summary);
 
+  // 只输型号主体（尺寸表里存的是「华为P40」），要靠模糊匹配兜底
+  inst.onSizeExample(tap({ q: "P40" }));
+  ok("P40 能匹配到华为P40", /匹配到「华为P40」/.test(inst.data.summary), inst.data.summary);
+  ok("P40 有相近箱号结果", inst.data.groups.length > 0);
+
   inst.onSizeExample(tap({ q: "完全不存在的型号ZZZ" }));
   ok("查不到尺寸时有明确提示", !!inst.data.empty, inst.data.empty && inst.data.empty.title);
 

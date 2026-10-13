@@ -56,6 +56,17 @@ function check(label, actual, expected) {
   console.log("  摘要:", await page.textContent("#summary"));
   check("按型号给出了尺寸", /屏幕约/.test(await page.textContent("#summary")), true);
 
+  // 4b. 只输型号主体（表里存的是「华为P40」），也要能靠模糊匹配查到
+  await page.fill("#q", "P40");
+  await page.waitForTimeout(350);
+  console.log("  摘要:", await page.textContent("#summary"));
+  check("P40 能匹配到华为P40", /匹配到「华为P40」/.test(await page.textContent("#summary")), true);
+  check("P40 有相近箱号结果", (await page.locator("#results .card").count()) > 0, true);
+  await page.fill("#q", "x60pro");
+  await page.waitForTimeout(350);
+  console.log("  摘要:", await page.textContent("#summary"));
+  check("x60pro 能匹配到机型", /匹配到/.test(await page.textContent("#summary")), true);
+
   // 5. 查不到的型号要有明确提示
   await page.fill("#q", "完全不存在的型号ZZZ");
   await page.waitForTimeout(350);

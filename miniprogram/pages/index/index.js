@@ -57,6 +57,42 @@ function sizeLevel(d) {
   return { key: "fit", label: "勉强候选" };
 }
 
+/**
+ * 查一个型号的屏幕尺寸：先精确查表，查不到就复用搜索的模糊/别名匹配兜底
+ *（尺寸表里存的是「华为P40」，用户只输「P40」时也要能查到）。
+ * 返回 { size, model }：model 是兜底时匹配到的机型名，精确命中时为 null。
+ */
+function resolveSize(raw) {
+  const direct = modelSize(BoxSearch.norm(raw));
+  if (direct !== null) return { size: direct, model: null };
+  const res = BoxSearch.search(getIndex().index, raw);
+  let best = null;
+  for (const [pool, penalty] of [[res.exact, 0], [res.fuzzy, 1000]]) {
+    for (const r of pool) {
+      for (const h of r.hits) {
+        const s = modelSize(h.m.k);
+        if (s === null) continue;
+        const rank = h.s - penalty;
+        if (!best || rank > best.rank) best = { rank, size: s, model: h.m.t };
+      }
+    }
+  }
+  return best;
+}
+
+/** 所有箱号里出现过的尺寸档（1 位小数），用于快捷入口 */
+function quickSizes() {
+  const boxes = (sizesData && sizesData.boxes) || {};
+  const uniq = [];
+  for (const id of Object.keys(boxes)) {
+    const e = boxes[id];
+    if (!e.ok || !e.inch) continue;
+    const v = Math.round(e.inch * 10) / 10;
+    if (!uniq.includes(v)) uniq.push(v);
+  }
+  return uniq.sort((a, b) => a - b).map((v) => v.toFixed(1));
+}
+
 /** 每个箱子里「离目标尺寸最近」的那个型号 */
 function nearestBySize(size, prefix) {
   const { index } = getIndex();
@@ -454,18 +490,11 @@ function buildSizeView(query, expanded, prefix) {
   const raw = String(query || "").trim();
   const boxes = (sizesData && sizesData.boxes) || {};
   const okIds = Object.keys(boxes).filter((id) => boxes[id].ok && boxes[id].inch);
-  const base = { groups: [], notes: [], notice: "", sizeExamples: [], empty: null };
+  const base = { groups: [], notes: [], notice: "", sizeExamples: quickSizes(), empty: null };
 
   if (!raw) {
-    const uniq = [];
-    for (const id of okIds) {
-      const v = Math.round(boxes[id].inch * 10) / 10;
-      if (!uniq.includes(v)) uniq.push(v);
-    }
-    uniq.sort((a, b) => a - b);
     return Object.assign({}, base, {
       summary: "已标出屏幕尺寸的箱号：" + okIds.length + " / " + getIndex().index.boxes.length + " 个",
-      sizeExamples: uniq.map((v) => v.toFixed(1)),
       empty: {
         title: "输手机型号，或直接输屏幕尺寸",
         hint: "输型号（如 红米10A）会先查它的屏幕尺寸，再列出尺寸相近的箱号；" +
@@ -477,8 +506,8 @@ function buildSizeView(query, expanded, prefix) {
   let size = parseSizeQuery(raw);
   let head;
   if (size === null) {
-    size = modelSize(BoxSearch.norm(raw));
-    if (size === null) {
+    const hit = resolveSize(raw);
+    if (!hit) {
       return Object.assign({}, base, {
         summary: "没有「" + raw + "」的屏幕尺寸数据",
         empty: {
@@ -487,7 +516,10 @@ function buildSizeView(query, expanded, prefix) {
         },
       });
     }
-    head = "「" + raw + "」屏幕约 " + fmtInch(size) + "″";
+    size = hit.size;
+    head = hit.model
+      ? "「" + raw + "」匹配到「" + hit.model + "」，屏幕约 " + fmtInch(size) + "″"
+      : "「" + raw + "」屏幕约 " + fmtInch(size) + "″";
   } else {
     head = "屏幕尺寸 " + fmtInch(size) + "″";
   }
@@ -548,6 +580,7 @@ const api = {
   getIndex, segments, pickVariant, resultCard, subCard, browseCard,
   buildSearchView, buildBrowseView, buildSuggestView, buildSizeView, sizeCard,
   tabDefs, boxSizeText, modelSize, parseSizeQuery, nearestBySize,
+  resolveSize, quickSizes,
   EXAMPLES, SIZE_EXAMPLE_MODELS,
   setMode(mode) { currentMode = mode; },
   getMode() { return currentMode; },

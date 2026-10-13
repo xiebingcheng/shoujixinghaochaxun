@@ -355,6 +355,60 @@
     return typeof v === "number" ? v : null;
   }
 
+  /**
+   * 查一个型号的屏幕尺寸：先精确查表，查不到就复用搜索的模糊/别名匹配兜底
+   * （尺寸表里存的是「华为P40」，用户只输「P40」时也要能查到）。
+   * 返回 { size, model }：model 是兜底时匹配到的机型名，精确命中时为 null。
+   */
+  function resolveSize(raw) {
+    const direct = modelSize(window.BoxSearch.norm(raw));
+    if (direct !== null) return { size: direct, model: null };
+    const res = window.BoxSearch.search(state.index, raw);
+    let best = null;
+    for (const [pool, penalty] of [[res.exact, 0], [res.fuzzy, 1000]]) {
+      for (const r of pool) {
+        for (const h of r.hits) {
+          const s = modelSize(h.m.k);
+          if (s === null) continue;
+          const rank = h.s - penalty;
+          if (!best || rank > best.rank) best = { rank, size: s, model: h.m.t };
+        }
+      }
+    }
+    return best;
+  }
+
+  /** 尺寸模式下所有箱号里出现过的尺寸档（用于快捷入口） */
+  function quickSizes() {
+    const boxes = (state.sizes && state.sizes.boxes) || {};
+    const uniq = new Set();
+    for (const id of Object.keys(boxes)) {
+      const e = boxes[id];
+      if (e.ok && e.inch) uniq.add(Math.round(e.inch * 10) / 10);
+    }
+    return Array.from(uniq).sort((a, b) => a - b);
+  }
+
+  function sizeExamplesHTML() {
+    const btns = quickSizes().slice(0, 8).map((s) =>
+      `<button class="example" type="button" data-size="${s.toFixed(1)}">${esc(oneInch(s))}″</button>`
+    ).join("");
+    const models = ["红米10A", "苹果13"].map((e) =>
+      `<button class="example" type="button" data-example="${esc(e)}">${esc(e)}</button>`
+    ).join("");
+    return btns + models;
+  }
+
+  function sizeEmptyHTML(title, hint) {
+    return `
+      <div class="empty">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14"/></svg>
+        <p>${esc(title)}</p>
+        <p class="hint">${esc(hint)}</p>
+        <div class="examples">${sizeExamplesHTML()}</div>
+      </div>`;
+  }
+
   function sizeLevel(d) {
     if (d <= SIZE_NEAR) return { key: "same", label: "尺寸一致" };
     if (d <= SIZE_CLOSE) return { key: "close", label: "尺寸接近" };
@@ -414,24 +468,16 @@
   function renderSizeIntro() {
     const boxes = (state.sizes && state.sizes.boxes) || {};
     const ids = Object.keys(boxes).filter((id) => boxes[id].ok && boxes[id].inch);
-    const uniq = new Set();
-    for (const id of ids) {
-      uniq.add(Math.round(boxes[id].inch * 10) / 10);
-    }
-    const sizes = Array.from(uniq).sort((a, b) => a - b);
     summaryEl.innerHTML = state.sizes
       ? `已标出屏幕尺寸的箱号：<b>${ids.length}</b> / ${state.index.boxes.length} 个`
       : "尺寸数据加载失败，暂时只能用「型号查箱号」";
-    const btns = sizes.map((s) =>
-      `<button class="example" type="button" data-size="${s.toFixed(1)}">${esc(oneInch(s))}″</button>`
-    ).join("");
     resultsEl.innerHTML = `
       <div class="empty">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14"/></svg>
         <p>输手机型号，或直接输屏幕尺寸</p>
         <p class="hint">输型号（如 <b>红米10A</b>）会先查它的屏幕尺寸，再列出尺寸相近的箱号；
           也可以直接输 <b>6.5</b>。箱号右上角就是这一箱的屏幕尺寸。</p>
-        <div class="examples">${btns}</div>
+        <div class="examples">${sizeExamplesHTML()}</div>
       </div>`;
   }
 
@@ -444,16 +490,19 @@
     let size = parseSizeQuery(raw);
     let head;
     if (size === null) {
-      size = modelSize(window.BoxSearch.norm(raw));
-      if (size === null) {
+      const hit = resolveSize(raw);
+      if (!hit) {
         summaryEl.innerHTML = `没有「${esc(raw)}」的屏幕尺寸数据`;
-        resultsEl.innerHTML = emptyHTML(
+        resultsEl.innerHTML = sizeEmptyHTML(
           "查不到这个型号的屏幕尺寸",
           "换种写法再试（如 红米10A、苹果13），或直接输尺寸，如 6.5"
         );
         return;
       }
-      head = `「${esc(raw)}」屏幕约 <b>${esc(fmtInch(size))}″</b>`;
+      size = hit.size;
+      head = hit.model
+        ? `「${esc(raw)}」匹配到「${esc(hit.model)}」，屏幕约 <b>${esc(fmtInch(size))}″</b>`
+        : `「${esc(raw)}」屏幕约 <b>${esc(fmtInch(size))}″</b>`;
     } else {
       head = `屏幕尺寸 <b>${esc(fmtInch(size))}″</b>`;
     }
@@ -461,7 +510,7 @@
     const list = nearestBySize(size);
     if (!list.length) {
       summaryEl.innerHTML = head + "，没找到尺寸相近的箱号";
-      resultsEl.innerHTML = emptyHTML(
+      resultsEl.innerHTML = sizeEmptyHTML(
         "没有尺寸相近的箱号",
         "换个尺寸再试，比如 6.1、6.5、6.7；或换个型号写法"
       );
