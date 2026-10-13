@@ -18,6 +18,10 @@
     <div class="header-inner">
       <h1 class="app-title">手机型号查箱号</h1>
       <p class="app-sub">输入手机型号或箱号，查出所在箱子</p>
+      <nav class="modes" id="modes" aria-label="查询方式">
+        <button class="mode" type="button" data-mode="model" aria-pressed="true">型号查箱号</button>
+        <button class="mode" type="button" data-mode="size" aria-pressed="false">尺寸查箱号</button>
+      </nav>
       <form class="search" id="search-form" role="search">
         <input id="q" class="search-input" type="search" name="q" inputmode="search"
                enterkeyhint="search" placeholder="手机型号或箱号，如 Mate30Pro、S01"

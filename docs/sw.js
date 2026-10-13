@@ -5,7 +5,7 @@
    - 数据文件（.json 等）：先返回缓存（秒开），同时后台拉一次更新缓存。
 
    改完这里的代码记得把 CACHE 的版本号 +1，否则老用户的旧缓存不会重建。 */
-const CACHE = "box-lookup-v6";
+const CACHE = "box-lookup-v7";
 const ASSETS = [
   "./",
   "index.html",
