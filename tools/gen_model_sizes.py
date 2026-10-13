@@ -52,6 +52,61 @@ def norm(text):
 
 
 # ---------------------------------------------------------------- 规则表
+# 折叠屏机型一块机器有两块屏，尺寸表里写成 {"inner": 内屏, "outer": 外屏}。
+# 键是「规范化后的型号前缀」，匹配时取最长命中。
+FOLDS = {
+    "huaweimatex3": (7.85, 6.4),
+    "huaweimatex5": (7.85, 6.4),
+    "huaweimatex6": (7.93, 6.45),
+    "huaweimatex7": (8.0, 6.49),
+    "huaweipuraxview": (6.3, 3.5),
+    "huaweipurax": (6.3, 3.5),
+    "honormagicv2psr": (7.92, 6.43),
+    "honormagicv2ultimate": (7.92, 6.43),
+    "honormagicv2": (7.92, 6.43),
+    "honormagicv3": (7.92, 6.43),
+    "honormagicvs2": (7.92, 6.43),
+    "honormagicvs3": (7.92, 6.43),
+    "honormagicvsultimate": (7.9, 6.45),
+    "honormagicvs": (7.9, 6.45),
+    "honormagicv6": (7.95, 6.52),
+    "magicv6": (7.95, 6.52),
+    "vivofold3pro": (8.03, 6.53),
+    "vivofold3": (8.03, 6.53),
+    "vivofold5": (8.03, 6.53),
+    "xiaomifold4": (7.98, 6.56),
+    "oppofindn3": (7.82, 6.31),
+    "oppofindn5": (8.12, 6.62),
+    "oppofindn6": (8.12, 6.62),
+    "findn3": (7.82, 6.31),
+    "findn5": (8.12, 6.62),
+    "findn6": (8.12, 6.62),
+    "iphone18fold": (7.76, 5.49),
+}
+FOLD_KEYS = sorted(FOLDS, key=len, reverse=True)
+
+# 不是机型，是表格里的占位词
+PLACEHOLDERS = {"折叠屏", "折叠屏前屏"}
+
+
+def fold_value(text):
+    """折叠屏返回 (内屏, 外屏)；带「前屏」字样的只要外屏，返回 (None, 外屏)；不是折叠屏返回 None。"""
+    k = norm(text)
+    if k in PLACEHOLDERS:
+        return None
+    for key in FOLD_KEYS:
+        if k.startswith(key):
+            inner, outer = FOLDS[key]
+            if "前屏" in k:
+                return (None, outer)
+            return (inner, outer)
+    return None
+
+
+def fold_entry(inner, outer):
+    return outer if inner is None else {"inner": inner, "outer": outer}
+
+
 # 每条：(规范化后的前缀, 英寸)。匹配时取「最长命中」，因此不需要排序，也不会误伤。
 def _prefix_rules():
     R = []
@@ -614,6 +669,11 @@ EXACT_RULES = {
 
 def guess(text):
     k = norm(text)
+    if k in PLACEHOLDERS:
+        return None
+    fold = fold_value(text)
+    if fold is not None:
+        return fold_entry(*fold)
     for prefix, inch in PREFIX_RULES:
         if k.startswith(prefix):
             return inch
@@ -642,6 +702,14 @@ def main():
             if key in seen:
                 continue
             seen.add(key)
+            # 折叠屏 / 占位词优先处理，折叠屏即使已有旧数值也要用最新的内屏外屏覆盖
+            fold = fold_value(t)
+            if fold is not None:
+                models[t] = fold_entry(*fold)
+                hit += 1
+                continue
+            if key in PLACEHOLDERS:
+                continue
             if t in existing:
                 models[t] = existing[t]
                 hit += 1

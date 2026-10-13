@@ -149,8 +149,8 @@ if (pageDef) {
     inst.data.summary);
   ok("尺寸模式下有免责提示", !!inst.data.notice, inst.data.notice.slice(0, 20) + "…");
   ok("尺寸卡片右上角带箱子尺寸",
-    inst.data.groups[0].cards.every((c) => !!c.sizeText),
-    inst.data.groups[0].cards.slice(0, 3).map((c) => c.id + " " + c.sizeText).join(" / "));
+    inst.data.groups[0].cards.every((c) => c.sizeLines && c.sizeLines.length > 0),
+    inst.data.groups[0].cards.slice(0, 3).map((c) => c.id + " " + c.sizeLines.join("+")).join(" / "));
   ok("尺寸卡片给出箱内最接近的型号",
     !!inst.data.groups[0].cards[0].sizeHitModel,
     inst.data.groups[0].cards[0].sizeHitModel + " " + inst.data.groups[0].cards[0].sizeHitInch);
@@ -172,10 +172,23 @@ if (pageDef) {
   inst.onSizeExample(tap({ q: "完全不存在的型号ZZZ" }));
   ok("查不到尺寸时有明确提示", !!inst.data.empty, inst.data.empty && inst.data.empty.title);
 
+  // ---- 折叠屏：内屏 / 外屏分别标注 ----
+  const flat = () => inst.data.groups.reduce((a, g) => a.concat(g.cards), []);
+  inst.onSizeExample(tap({ q: "7.82" }));
+  const y18in = flat().find((c) => c.id === "Y18");
+  ok("搜 7.82 命中 Y18 内屏", !!y18in && y18in.kindKey === "inner",
+    y18in ? y18in.kindLabel + " " + y18in.sizeHitInch : "（没有 Y18）");
+  ok("Y18 箱号右上角是内/外两行", !!y18in && y18in.sizeLines.length === 2,
+    y18in ? y18in.sizeLines.join(" / ") : "");
+  inst.onSizeExample(tap({ q: "6.31" }));
+  const y18out = flat().find((c) => c.id === "Y18");
+  ok("搜 6.31 命中 Y18 外屏", !!y18out && y18out.kindKey === "outer",
+    y18out ? y18out.kindLabel + " " + y18out.sizeHitInch : "（没有 Y18）");
+
   inst.onModeTap(tap({ mode: "model" }));
   inst.onClear();
   ok("切回型号模式的浏览列表也有尺寸标签",
-    inst.data.groups[0].cards.every((c) => typeof c.sizeText === "string"),
+    inst.data.groups[0].cards.every((c) => Array.isArray(c.sizeLines)),
     inst.data.summary);
 }
 

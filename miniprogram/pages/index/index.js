@@ -27,20 +27,47 @@ function oneInch(n) {
   return (Math.round(Number(n) * 10) / 10).toFixed(1);
 }
 
-/** 箱号右上角显示的屏幕尺寸；没有可靠尺寸时返回空串 */
-function boxSizeText(box) {
+/** 箱号右上角显示的屏幕尺寸（一行或多行）；没有可靠尺寸时返回空数组 */
+function boxSizeLines(box) {
   const info = sizesData && sizesData.boxes && sizesData.boxes[box.id];
-  if (!info || !info.ok || !info.inch) return "";
+  if (!info || !info.ok || !info.inch) return [];
+  if (info.inner && info.outer) {
+    return ["内 " + oneInch(info.inner) + "″", "外 " + oneInch(info.outer) + "″"];
+  }
   const r = info.range || [];
   if (r.length === 2 && Math.round(r[1] * 10) - Math.round(r[0] * 10) >= 2) {
-    return oneInch(r[0]) + "-" + oneInch(r[1]) + "″";
+    return [oneInch(r[0]) + "-" + oneInch(r[1]) + "″"];
   }
-  return oneInch(info.inch) + "″";
+  return [oneInch(info.inch) + "″"];
 }
 
 function modelSize(key) {
   const v = sizesData && sizesData.models && sizesData.models[key];
-  return typeof v === "number" ? v : null;
+  if (typeof v === "number") return v;
+  // 折叠屏取内屏当代表尺寸（外屏在尺寸查询里单独参与匹配）
+  if (v && typeof v === "object" && typeof v.inner === "number") return v.inner;
+  return null;
+}
+
+/** 一个型号的所有屏幕尺寸：单屏 1 条，折叠屏内屏 + 外屏 2 条 */
+function modelSizes(key) {
+  const v = sizesData && sizesData.models && sizesData.models[key];
+  if (typeof v === "number") return [{ inch: v, kind: "single" }];
+  if (v && typeof v === "object") {
+    const out = [];
+    if (typeof v.inner === "number") out.push({ inch: v.inner, kind: "inner" });
+    if (typeof v.outer === "number") out.push({ inch: v.outer, kind: "outer" });
+    return out;
+  }
+  return [];
+}
+
+/** 型号的尺寸文字：普通机型「6.5″」，折叠屏「内7.8/外6.3″」 */
+function sizesLabel(key) {
+  const list = modelSizes(key);
+  if (!list.length) return "";
+  if (list.length === 1) return fmtInch(list[0].inch) + "″";
+  return list.map((s) => (s.kind === "inner" ? "内" : "外") + fmtInch(s.inch)).join("/") + "″";
 }
 
 /** 输入像 6.5 / 6.5寸 就当尺寸；否则当型号 */
@@ -93,7 +120,7 @@ function quickSizes() {
   return uniq.sort((a, b) => a - b).map((v) => v.toFixed(1));
 }
 
-/** 每个箱子里「离目标尺寸最近」的那个型号 */
+/** 每个箱子里「离目标尺寸最近」的那块屏（折叠屏会分别比内屏和外屏） */
 function nearestBySize(size, prefix) {
   const { index } = getIndex();
   const list = [];
@@ -101,12 +128,14 @@ function nearestBySize(size, prefix) {
     if (prefix && prefix !== "ALL" && box.prefix !== prefix) continue;
     let best = null;
     for (const m of box.models) {
-      const s = modelSize(m.k);
-      if (s === null) continue;
-      const d = Math.abs(s - size);
-      if (!best || d < best.d) best = { model: m, inch: s, d };
+      for (const s of modelSizes(m.k)) {
+        const d = Math.abs(s.inch - size);
+        if (!best || d < best.d) best = { model: m, inch: s.inch, kind: s.kind, d };
+      }
     }
-    if (best && best.d <= SIZE_MAX) list.push({ box, model: best.model, inch: best.inch, d: best.d });
+    if (best && best.d <= SIZE_MAX) {
+      list.push({ box, model: best.model, inch: best.inch, kind: best.kind, d: best.d });
+    }
   }
   list.sort((a, b) => a.d - b.d || (a.box.id < b.box.id ? -1 : 1));
   return list;
@@ -219,7 +248,7 @@ function resultCard(result, tokens, expanded, withSubs) {
   return {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
-    sizeText: boxSizeText(box),
+    sizeLines: boxSizeLines(box),
     name: box.name || "未命名箱",
     open,
     isSub: false,
@@ -247,7 +276,7 @@ function subCard(box, froms, expanded) {
   return {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
-    sizeText: boxSizeText(box),
+    sizeLines: boxSizeLines(box),
     name: box.name || "未命名箱",
     open,
     isSub: true,
@@ -286,7 +315,7 @@ function browseCard(box, expanded) {
   return {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
-    sizeText: boxSizeText(box),
+    sizeLines: boxSizeLines(box),
     name: box.name || "未命名箱",
     open,
     isSub: false,
@@ -446,12 +475,11 @@ function sizeCard(item, expanded) {
   const level = sizeLevel(item.d);
   const hits = open
     ? box.models.map((m, i) => {
-      const s = modelSize(m.k);
       return {
         k: "l" + i,
         t: m.t,
         altText: altText(m.alt),
-        sizeText: s === null ? "" : fmtInch(s) + "″",
+        sizeText: sizesLabel(m.k),
       };
     })
     : [];
@@ -460,15 +488,18 @@ function sizeCard(item, expanded) {
   return {
     id: box.id,
     badgeCls: "badge-" + String(box.prefix).toLowerCase(),
-    sizeText: boxSizeText(box),
+    sizeLines: boxSizeLines(box),
     name: box.name || "未命名箱",
     open,
     isSub: false,
     isSize: true,
     levelKey: level.key,
     levelLabel: level.label,
+    kindKey: item.kind === "single" ? "" : item.kind,
+    kindLabel: item.kind === "inner" ? "内屏匹配" : (item.kind === "outer" ? "外屏匹配" : ""),
     sizeHitModel: item.model.t,
-    sizeHitInch: fmtInch(item.inch) + "″",
+    sizeHitInch: (item.kind === "inner" ? "内屏 " : (item.kind === "outer" ? "外屏 " : "")) +
+      fmtInch(item.inch) + "″",
     sizeHitDiff: item.d < 0.005 ? "尺寸相同" : "差 " + fmtInch(item.d) + "″",
     hits,
     rest: [],
@@ -579,7 +610,7 @@ function tabDefs() {
 const api = {
   getIndex, segments, pickVariant, resultCard, subCard, browseCard,
   buildSearchView, buildBrowseView, buildSuggestView, buildSizeView, sizeCard,
-  tabDefs, boxSizeText, modelSize, parseSizeQuery, nearestBySize,
+  tabDefs, boxSizeLines, modelSize, modelSizes, sizesLabel, parseSizeQuery, nearestBySize,
   resolveSize, quickSizes,
   EXAMPLES, SIZE_EXAMPLE_MODELS,
   setMode(mode) { currentMode = mode; },

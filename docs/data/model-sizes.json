@@ -84,8 +84,14 @@
     "F7": 6.3,
     "F9": 6.3,
     "F9Pro": 6.3,
-    "Find N5厚胶": 8.12,
-    "Find N6厚胶": 8.12,
+    "Find N5厚胶": {
+      "inner": 8.12,
+      "outer": 6.62
+    },
+    "Find N6厚胶": {
+      "inner": 8.12,
+      "outer": 6.62
+    },
     "FINDX10": 6.59,
     "FINDX10PROMAX": 6.78,
     "FindX2Lite": 6.4,
@@ -175,7 +181,10 @@
     "iPhone17Pro": 6.3,
     "iPhone17ProMax": 6.9,
     "iphone18": 6.3,
-    "iPhone18Fold": 7.76,
+    "iPhone18Fold": {
+      "inner": 7.76,
+      "outer": 5.49
+    },
     "iPhone18PRO": 6.3,
     "iPhone18PROMAX": 6.9,
     "iPhoneX": 5.8,
@@ -292,7 +301,10 @@
     "K9": 6.5,
     "K9Pro": 6.5,
     "K9X": 6.5,
-    "MAGIC V6": 7.95,
+    "MAGIC V6": {
+      "inner": 7.95,
+      "outer": 6.52
+    },
     "MAGIC8": 6.7,
     "Magic8PROAir": 6.7,
     "MAGIC9": 6.7,
@@ -423,8 +435,11 @@
     "OPPO A98": 6.72,
     "OPPO A9X": 6.53,
     "OPPO F11Pro": 6.5,
-    "OPPO Find N3": 7.82,
-    "OPPO Find N3 折叠屏前屏": 7.82,
+    "OPPO Find N3": {
+      "inner": 7.82,
+      "outer": 6.31
+    },
+    "OPPO Find N3 折叠屏前屏": 6.31,
     "OPPO Find X8S": 6.59,
     "OPPO Find X8s+": 6.78,
     "OPPO Find X8ulta": 6.59,
@@ -591,9 +606,19 @@
     "V21E": 6.44,
     "V23E": 6.44,
     "V9": 6.3,
-    "vivo Fold3": 8.03,
-    "vivo Fold3Pro": 8.03,
-    "vivo Fold5": 8.03,
+    "vivo Fold3": {
+      "inner": 8.03,
+      "outer": 6.53
+    },
+    "vivo Fold3Pro": {
+      "inner": 8.03,
+      "outer": 6.53
+    },
+    "vivo Fold5": {
+      "inner": 8.03,
+      "outer": 6.53
+    },
+    "vivo Fold5 折叠屏前屏": 6.53,
     "vivo NEX": 6.59,
     "vivo NEX2": 6.39,
     "vivo NEX2前膜": 6.39,
@@ -981,10 +1006,22 @@
     "华为 Mate80Pro Max": 6.9,
     "华为 Mate80ProMax风驰版": 6.9,
     "华为 Mate80RS": 6.9,
-    "华为 MateX3": 7.85,
-    "华为 MateX5": 7.85,
-    "华为 MateX6": 7.93,
-    "华为 MateX7": 8.0,
+    "华为 MateX3": {
+      "inner": 7.85,
+      "outer": 6.4
+    },
+    "华为 MateX5": {
+      "inner": 7.85,
+      "outer": 6.4
+    },
+    "华为 MateX6": {
+      "inner": 7.93,
+      "outer": 6.45
+    },
+    "华为 MateX7": {
+      "inner": 8.0,
+      "outer": 6.49
+    },
     "华为 Nova10Pro": 6.78,
     "华为 Nova11Pro": 6.76,
     "华为 Nova11Ultra": 6.78,
@@ -1108,7 +1145,10 @@
     "华为P90Pro": 6.6,
     "华为Pura70": 6.6,
     "华为Pura90": 6.8,
-    "华为PuraXView": 6.39,
+    "华为PuraXView": {
+      "inner": 6.3,
+      "outer": 3.5
+    },
     "华为Y6P 2020": 6.3,
     "华为Y8P 2020": 6.3,
     "华为Y9Prime 2019": 6.59,
@@ -1194,7 +1234,6 @@
     "小米15Pro": 6.73,
     "小米15Ultra": 6.73,
     "小米17": 6.3,
-    "小米17 ProMax": 6.9,
     "小米17MAX": 6.9,
     "小米17PRO": 6.3,
     "小米17T": 6.59,
@@ -1215,7 +1254,11 @@
     "小米9青春版": 6.39,
     "小米CC9": 6.39,
     "小米CC9Pro": 6.47,
-    "小米Fold4": 7.98,
+    "小米Fold4": {
+      "inner": 7.98,
+      "outer": 6.56
+    },
+    "小米Fold4 折叠屏前屏": 6.56,
     "小米Mix3": 6.39,
     "小米Mix4": 6.67,
     "小米POCO C3": 6.53,
@@ -1249,7 +1292,6 @@
     "畅玩80PRO": 6.7,
     "真我 11Pro": 6.7,
     "真我 11Pro+": 6.7,
-    "真我 15T": 6.57,
     "真我 9": 6.5,
     "真我 GT2 Neo2": 6.62,
     "真我 GT7Pro": 6.43,
@@ -1377,11 +1419,9 @@
     "真我XT": 6.4,
     "真我X青春版": 6.4,
     "红米 K40增强版": 6.67,
-    "红米 K90": 6.59,
     "红米 Note11 4G": 6.6,
     "红米 Note15": 6.77,
     "红米 Note15Pro+": 6.83,
-    "红米 TURBO5": 6.59,
     "红米10": 6.53,
     "红米10A": 6.53,
     "红米10C": 6.71,
@@ -1457,7 +1497,6 @@
     "红米K80Ultra": 6.67,
     "红米K80冠军版": 6.67,
     "红米K80至尊版": 6.67,
-    "红米K90 ProMax": 6.9,
     "红米K90MAX": 6.83,
     "红米K90至尊": 6.83,
     "红米Note 9Pro 4G": 6.67,
@@ -1500,7 +1539,6 @@
     "红米Note14": 6.67,
     "红米note14Pro": 6.67,
     "红米Note14Pro+": 6.67,
-    "红米Note15 Pro": 6.83,
     "红米NOTE15R": 6.9,
     "红米NOTE15R 新": 6.9,
     "红米NOTE17": 6.99,
@@ -1523,7 +1561,6 @@
     "红米Turbo3": 6.67,
     "红米Turbo4": 6.67,
     "红米Turbo4Pro": 6.83,
-    "红米Turbo5 Max": 6.83,
     "联想Z5Pro": 6.39,
     "联想Z5Pro GT": 6.39,
     "荣耀 100": 6.7,
@@ -1561,14 +1598,38 @@
     "荣耀 Magic6": 6.78,
     "荣耀 Magic6Lite": 6.7,
     "荣耀 Magic6青春": 6.78,
-    "荣耀 MagicV2": 7.9,
-    "荣耀 MagicV2PSR": 7.92,
-    "荣耀 MagicV2至臻版": 7.9,
-    "荣耀 MagicV3": 7.92,
-    "荣耀 MagicVS": 7.9,
-    "荣耀 MagicVS 至臻": 7.9,
-    "荣耀 MagicVS2": 7.71,
-    "荣耀 MagicVS3": 7.92,
+    "荣耀 MagicV2": {
+      "inner": 7.92,
+      "outer": 6.43
+    },
+    "荣耀 MagicV2PSR": {
+      "inner": 7.92,
+      "outer": 6.43
+    },
+    "荣耀 MagicV2至臻版": {
+      "inner": 7.92,
+      "outer": 6.43
+    },
+    "荣耀 MagicV3": {
+      "inner": 7.92,
+      "outer": 6.43
+    },
+    "荣耀 MagicVS": {
+      "inner": 7.9,
+      "outer": 6.45
+    },
+    "荣耀 MagicVS 至臻": {
+      "inner": 7.9,
+      "outer": 6.45
+    },
+    "荣耀 MagicVS2": {
+      "inner": 7.92,
+      "outer": 6.43
+    },
+    "荣耀 MagicVS3": {
+      "inner": 7.92,
+      "outer": 6.43
+    },
     "荣耀 Play10C": 6.7,
     "荣耀 Power": 6.7,
     "荣耀 V40": 6.72,
@@ -1583,8 +1644,11 @@
     "荣耀 X60TPro+": 6.7,
     "荣耀 X7B": 6.7,
     "荣耀 魔术Pro": 6.76,
-    "荣耀 魔术VS 至臻版 折叠屏": 7.9,
-    "荣耀 魔术VS3 折叠屏前屏": 7.92,
+    "荣耀 魔术VS 至臻版 折叠屏": {
+      "inner": 7.9,
+      "outer": 6.45
+    },
+    "荣耀 魔术VS3 折叠屏前屏": 6.43,
     "荣耀10I": 6.21,
     "荣耀10青春": 6.21,
     "荣耀20": 6.26,

@@ -491,6 +491,9 @@
   position: absolute;
   top: -10rpx;
   right: -12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 2rpx 10rpx;
   border-radius: 999rpx;
   background: #fff;
@@ -501,6 +504,28 @@
   line-height: 1.5;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.16);
 }
+
+/* 折叠屏：内屏一行、外屏一行 */
+.badge-size-2 {
+  border-radius: 12rpx;
+  font-size: 17rpx;
+  padding: 4rpx 8rpx;
+}
+
+.badge-size-2 .sz-line {
+  display: block;
+  line-height: 1.25;
+}
+
+.tag-kind {
+  font-size: 21rpx;
+  color: #fff;
+  border-radius: 6rpx;
+  padding: 2rpx 10rpx;
+}
+
+.tag-kind.kind-inner { background: #7c4dff; }
+.tag-kind.kind-outer { background: #00938a; }
 
 .tag-size {
   font-size: 21rpx;

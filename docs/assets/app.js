@@ -134,13 +134,21 @@
   function sizeChip(box) {
     const info = state.sizes && state.sizes.boxes && state.sizes.boxes[box.id];
     if (!info || !info.ok || !info.inch) return "";
-    const [lo, hi] = info.range || [];
-    const text = hi !== undefined &&
-      Math.round(hi * 10) - Math.round(lo * 10) >= 2
-      ? `${oneInch(lo)}-${oneInch(hi)}″`
-      : `${oneInch(info.inch)}″`;
-    const title = `这一箱的屏幕约 ${text}（按箱内 ${info.known}/${info.total} 个型号统计）`;
-    return `<span class="badge-size" title="${esc(title)}">${esc(text)}</span>`;
+    const fold = info.inner && info.outer;
+    let lines;
+    let title;
+    if (fold) {
+      lines = [`内 ${oneInch(info.inner)}″`, `外 ${oneInch(info.outer)}″`];
+      title = `折叠屏：内屏约 ${oneInch(info.inner)}″，外屏约 ${oneInch(info.outer)}″`;
+    } else {
+      const [lo, hi] = info.range || [];
+      const wide = hi !== undefined && Math.round(hi * 10) - Math.round(lo * 10) >= 2;
+      const text = wide ? `${oneInch(lo)}-${oneInch(hi)}″` : `${oneInch(info.inch)}″`;
+      lines = [text];
+      title = `这一箱的屏幕约 ${text}（按箱内 ${info.known}/${info.total} 个型号统计）`;
+    }
+    const body = lines.map((t) => `<span class="sz-line">${esc(t)}</span>`).join("");
+    return `<span class="badge-size${fold ? " badge-size-2" : ""}" title="${esc(title)}">${body}</span>`;
   }
 
   /** small：浏览列表里的小号徽标；toggle：箱号变成可点开的按钮 */
@@ -352,7 +360,31 @@
   function modelSize(key) {
     if (!state.sizes || !state.sizes.models) return null;
     const v = state.sizes.models[key];
-    return typeof v === "number" ? v : null;
+    if (typeof v === "number") return v;
+    // 折叠屏取内屏当代表尺寸（外屏在尺寸查询里单独参与匹配）
+    if (v && typeof v === "object" && typeof v.inner === "number") return v.inner;
+    return null;
+  }
+
+  /** 一个型号的所有屏幕尺寸：单屏 1 条，折叠屏内屏 + 外屏 2 条 */
+  function modelSizes(key) {
+    const v = state.sizes && state.sizes.models && state.sizes.models[key];
+    if (typeof v === "number") return [{ inch: v, kind: "single" }];
+    if (v && typeof v === "object") {
+      const out = [];
+      if (typeof v.inner === "number") out.push({ inch: v.inner, kind: "inner" });
+      if (typeof v.outer === "number") out.push({ inch: v.outer, kind: "outer" });
+      return out;
+    }
+    return [];
+  }
+
+  /** 型号的尺寸文字：普通机型「6.5″」，折叠屏「内7.8/外6.3″」 */
+  function sizesLabel(key) {
+    const list = modelSizes(key);
+    if (!list.length) return "";
+    if (list.length === 1) return `${fmtInch(list[0].inch)}″`;
+    return list.map((s) => (s.kind === "inner" ? "内" : "外") + fmtInch(s.inch)).join("/") + "″";
   }
 
   /**
@@ -415,19 +447,19 @@
     return { key: "fit", label: "勉强候选" };
   }
 
-  /** 每个箱子里「离目标尺寸最近」的那个型号 */
+  /** 每个箱子里「离目标尺寸最近」的那块屏（折叠屏会分别比内屏和外屏） */
   function nearestBySize(size) {
     const list = [];
     for (const box of state.index.boxes) {
       if (state.prefix !== "ALL" && box.prefix !== state.prefix) continue;
       let best = null;
       for (const m of box.models) {
-        const s = modelSize(m.k);
-        if (s === null) continue;
-        const d = Math.abs(s - size);
-        if (!best || d < best.d) best = { model: m, inch: s, d };
+        for (const s of modelSizes(m.k)) {
+          const d = Math.abs(s.inch - size);
+          if (!best || d < best.d) best = { model: m, inch: s.inch, kind: s.kind, d };
+        }
       }
-      if (best && best.d <= SIZE_MAX) list.push({ box, ...best });
+      if (best && best.d <= SIZE_MAX) list.push(Object.assign({ box }, best));
     }
     list.sort((a, b) => a.d - b.d || (a.box.id < b.box.id ? -1 : 1));
     return list;
@@ -439,12 +471,15 @@
     const level = sizeLevel(item.d);
     const name = box.name ? esc(box.name) : "未命名箱";
     const diff = item.d < 0.005 ? "尺寸相同" : `差 ${fmtInch(item.d)}″`;
+    const kindText = item.kind === "inner" ? "内屏 " : item.kind === "outer" ? "外屏 " : "";
+    const kindTag = item.kind === "single" ? ""
+      : `<span class="tag kind-${item.kind}">${item.kind === "inner" ? "内屏匹配" : "外屏匹配"}</span>`;
     const closest = '<div class="size-hit">箱内最接近：<b>' + esc(item.model.t) + "</b> · " +
-      esc(fmtInch(item.inch)) + '″<span class="size-diff">' + esc(diff) + "</span></div>";
+      esc(kindText + fmtInch(item.inch)) + '″<span class="size-diff">' + esc(diff) + "</span></div>";
     const body = open
       ? '<ul class="hits">' + box.models.map((m) => {
-        const s = modelSize(m.k);
-        const tag = s === null ? "" : ` <span class="size-tag">${esc(fmtInch(s))}″</span>`;
+        const label = sizesLabel(m.k);
+        const tag = label ? ` <span class="size-tag">${esc(label)}</span>` : "";
         const alt = (m.alt || []).length
           ? ` <span class="alt">（另一写法：${esc(m.alt.join("、"))}）</span>`
           : "";
@@ -458,6 +493,7 @@
           <div class="card-head">
             <span class="card-name">${name}</span>
             <span class="tag size-${level.key}">${level.label}</span>
+            ${kindTag}
           </div>
           ${body}
           ${footHTML(box, open ? undefined : "点箱号展开箱内机型", open && box.models.length > 12)}
@@ -656,10 +692,9 @@
     activeIndex = -1;
     const tokens = value.split(/\s+/).filter(Boolean);
     suggestEl.innerHTML = res.items.map((it, i) => {
-      const inch = state.mode === "size" ? modelSize(it.id) : null;
-      const codeList = inch !== null
-        ? `${fmtInch(inch)}″`
-        : it.boxes.slice(0, 3).join("·") + (it.boxes.length > 3 ? ` 等${it.boxes.length}` : "");
+      const sizeLabel = state.mode === "size" ? sizesLabel(it.id) : "";
+      const codeList = sizeLabel || it.boxes.slice(0, 3).join("·") +
+        (it.boxes.length > 3 ? ` 等${it.boxes.length}` : "");
       const alt = it.alt.length ? ` <span class="alt">（${esc(it.alt.join("、"))}）</span>` : "";
       const tag = it.type === "name" ? '<span class="s-tag">箱名</span>' : "";
       return `<div class="s-item" role="option" data-i="${i}">` +

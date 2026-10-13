@@ -77,13 +77,18 @@
       <view class="card {{card.open ? 'card-open' : ''}} {{card.isSub ? 'card-sub' : ''}}"
             wx:for="{{group.cards}}" wx:for-item="card" wx:key="id"
             data-id="{{card.id}}" bindtap="onCardTap">
-        <view class="badge {{card.badgeCls}}">{{card.id}}<text class="badge-size"
-              wx:if="{{card.sizeText}}">{{card.sizeText}}</text></view>
+        <view class="badge {{card.badgeCls}}">{{card.id}}
+          <view class="badge-size {{card.sizeLines.length > 1 ? 'badge-size-2' : ''}}"
+                wx:if="{{card.sizeLines.length}}">
+            <text class="sz-line" wx:for="{{card.sizeLines}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
         <view class="card-body">
           <view class="card-head">
             <text class="card-name">{{card.name}}</text>
             <text class="tag-sub" wx:if="{{card.isSub}}">可替代</text>
             <text class="tag-size size-{{card.levelKey}}" wx:if="{{card.isSize}}">{{card.levelLabel}}</text>
+            <text class="tag-kind kind-{{card.kindKey}}" wx:if="{{card.kindLabel}}">{{card.kindLabel}}</text>
           </view>
 
           <view class="sub-note" wx:if="{{card.isSub}}">

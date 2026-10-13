@@ -630,6 +630,10 @@ mark {
   position: absolute;
   top: -7px;
   right: -8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.3;
   padding: 1px 5px;
   border-radius: 999px;
   background: #fff;
@@ -643,9 +647,23 @@ mark {
   white-space: nowrap;
 }
 
+/* 折叠屏：内屏一行、外屏一行 */
+.badge-size-2 {
+  border-radius: 8px;
+  font-size: 9px;
+  padding: 2px 4px;
+  letter-spacing: -0.2px;
+}
+
+.badge-size-2 .sz-line { display: block; }
+
 .tag.size-same { background: #2f9e6f; }
 .tag.size-close { background: #d98a17; }
 .tag.size-fit { background: #8fa6bb; }
+
+/* 折叠屏命中内屏 / 外屏，做成醒目标记 */
+.tag.kind-inner { background: #7c4dff; }
+.tag.kind-outer { background: #00938a; }
 
 .size-hit {
   margin-top: 6px;

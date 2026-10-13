@@ -101,6 +101,27 @@ function check(label, actual, expected) {
   const chips = await page.locator("#results .card .badge-size").count();
   check("浏览视图有尺寸标签", chips > 0, true);
   console.log("  浏览视图尺寸标签数:", chips, "/ 卡片数:", await page.locator("#results .card").count());
+  const foldLines = await page.locator('#results .card[data-id="Y18"] .badge-size-2 .sz-line').allTextContents();
+  check("折叠屏箱号 Y18 标出内/外两行", foldLines.length, 2);
+  console.log("  Y18 标签:", foldLines.join(" / "));
+
+  // 8b. 折叠屏：搜外屏尺寸要标「外屏匹配」，搜内屏尺寸标「内屏匹配」
+  await page.click('.mode[data-mode="size"]');
+  await page.waitForTimeout(250);
+  await page.fill("#q", "7.82");
+  await page.waitForTimeout(400);
+  const y18in = page.locator('#results .card[data-id="Y18"]');
+  check("搜 7.82 标记内屏", await y18in.locator(".tag.kind-inner").count(), 1);
+  console.log("  ", (await y18in.innerText()).replace(/\s+/g, " ").trim().slice(0, 72));
+  await page.fill("#q", "6.31");
+  await page.waitForTimeout(400);
+  const y18out = page.locator('#results .card[data-id="Y18"]');
+  check("搜 6.31 标记外屏", await y18out.locator(".tag.kind-outer").count(), 1);
+  console.log("  ", (await y18out.innerText()).replace(/\s+/g, " ").trim().slice(0, 72));
+  await page.click('.mode[data-mode="model"]');
+  await page.waitForTimeout(250);
+  await page.fill("#q", "");
+  await page.waitForTimeout(200);
 
   // 9. 原有搜索不受影响
   await page.fill("#q", "苹果13");

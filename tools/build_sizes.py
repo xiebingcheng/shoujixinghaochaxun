@@ -66,6 +66,36 @@ def load_json(path):
         return json.load(f)
 
 
+def parse_size(val):
+    """尺寸表里一条记录：单个数字，或 {"inner": 内屏, "outer": 外屏}。"""
+    if isinstance(val, dict):
+        out = {}
+        for k in ("inner", "outer"):
+            if val.get(k):
+                out[k] = float(val[k])
+        return out or None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def size_key(val):
+    return tuple(sorted(val.items())) if isinstance(val, dict) else (val,)
+
+
+def cluster_repr(vals):
+    """找「最多数值挤在一起」的那个 0.1 英寸区间，返回 (代表值, 一致率, (最小, 最大))。"""
+    vals = sorted(vals)
+    best_i = best_n = 0
+    j = 0
+    for i, v in enumerate(vals):
+        while vals[j] < v - TOLERANCE - 1e-9:
+            j += 1
+        if i - j + 1 > best_n:
+            best_n, best_i = i - j + 1, j
+    window = vals[best_i:best_i + best_n]
+    return round(sum(window) / len(window), 2), best_n / len(vals), (min(window), max(window))
 def main():
     boxes_data = load_json(BOXES_PATH)
     if not os.path.exists(SIZES_PATH):
@@ -78,15 +108,14 @@ def main():
     model_size = {}
     conflicts = []
     for text, val in raw_models.items():
-        inch = val.get("inch") if isinstance(val, dict) else val
-        if not inch:
+        parsed = parse_size(val)
+        if parsed is None:
             continue
         key = norm(text)
-        inch = float(inch)
-        if key in model_size and abs(model_size[key] - inch) > 0.001:
-            conflicts.append((text, model_size[key], inch))
+        if key in model_size and size_key(model_size[key]) != size_key(parsed):
+            conflicts.append((text, model_size[key], parsed))
             continue
-        model_size[key] = inch
+        model_size[key] = parsed
 
     boxes_out = {}
     rows = []
@@ -96,35 +125,51 @@ def main():
     for box in boxes_data["boxes"]:
         models = [m for m in box["models"] if m["t"] not in PLACEHOLDERS]
         total = len(models)
-        known = []
+        singles, inners, outers = [], [], []
         for m in models:
             key = m.get("k") or norm(m["t"])
-            inch = model_size.get(key)
-            if inch is None:
-                inch = model_size.get(norm(m["t"]))
-            if inch is not None:
-                known.append(inch)
+            val = model_size.get(key)
+            if val is None:
+                val = model_size.get(norm(m["t"]))
+            if val is None:
+                continue
+            if isinstance(val, dict):
+                if "inner" in val:
+                    inners.append(val["inner"])
+                if "outer" in val:
+                    outers.append(val["outer"])
+                # 只有外屏写法（如「xx 折叠屏前屏」）并入单屏组，用于判定这一箱是不是折叠屏
+                if "inner" not in val:
+                    singles.append(val["outer"])
+            else:
+                singles.append(val)
         total_models += total
-        with_size += len(known)
+        # 有尺寸的型号数：折叠屏一台上算一台
+        have_size = 0
+        for m in models:
+            key = m.get("k") or norm(m["t"])
+            if model_size.get(key) is not None or model_size.get(norm(m["t"])) is not None:
+                have_size += 1
+        with_size += have_size
 
-        entry = {"total": total, "known": len(known)}
-        if total and known:
-            coverage = len(known) / total
-            # 滑动窗口：找「最多型号挤在一起」的那个 0.1 英寸区间
-            vals = sorted(known)
-            best_i = best_n = 0
-            j = 0
-            for i, v in enumerate(vals):
-                while vals[j] < v - TOLERANCE - 1e-9:
-                    j += 1
-                if i - j + 1 > best_n:
-                    best_n, best_i = i - j + 1, j
-            window = vals[best_i:best_i + best_n]
-            agreement = best_n / len(known)
-            inch = round(sum(window) / len(window), 2)
-            entry.update({"inch": inch, "coverage": round(coverage, 3),
-                          "agreement": round(agreement, 3),
-                          "range": [min(window), max(window)]})
+        entry = {"total": total, "known": have_size}
+        entry["fold"] = bool(inners and len(inners) >= len(singles))
+        if total and have_size:
+            coverage = have_size / total
+            entry["coverage"] = round(coverage, 3)
+            if entry["fold"]:
+                inch, agreement, rng = cluster_repr(inners)
+                entry.update({"inch": inch, "inner": inch, "range": list(rng),
+                              "agreement": round(agreement, 3)})
+                if outers:
+                    o_inch, o_agree, o_rng = cluster_repr(outers)
+                    entry.update({"outer": o_inch, "outerRange": list(o_rng),
+                                  "outerAgreement": round(o_agree, 3)})
+            else:
+                inch, agreement, rng = cluster_repr(singles)
+                entry.update({"inch": inch, "range": list(rng),
+                              "agreement": round(agreement, 3)})
+            agreement = min(entry["agreement"], entry.get("outerAgreement", 1))
             if coverage < COVERAGE_MIN:
                 no_cover.append(box["id"])
                 entry["ok"] = False
@@ -150,7 +195,8 @@ def main():
             "boxesWithSize": sum(1 for e in boxes_out.values() if e.get("ok")),
             "modelCoverage": round(with_size / total_models, 3) if total_models else 0,
         },
-        "models": {k: round(v, 2) for k, v in sorted(model_size.items())},
+        "models": {k: (round(v, 2) if isinstance(v, float) else v)
+                   for k, v in sorted(model_size.items())},
         "boxes": boxes_out,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
@@ -189,7 +235,9 @@ def main():
     if conflicts:
         lines += ["## 同一个型号被写成了不同尺寸（请核对）", ""]
         for text, a, b in conflicts:
-            lines.append(f"- `{text}`：已有 {a} 寸，表里又写了 {b} 寸")
+            fmt = lambda v: ("内%s/外%s" % (v.get("inner", "—"), v.get("outer", "—"))
+                             if isinstance(v, dict) else str(v))
+            lines.append(f"- `{text}`：已有 {fmt(a)}，表里又写了 {fmt(b)}")
         lines.append("")
 
     if no_agree:
@@ -199,6 +247,17 @@ def main():
             e = boxes_out[bid]
             lines.append(f"- **{bid}**：有尺寸 {e['known']}/{e['total']}，"
                          f"最大尺寸组只占 {e['agreement']:.0%}")
+        lines.append("")
+
+    folds = [(bid, e) for bid, e in boxes_out.items() if e.get("inner") and e.get("outer")]
+    if folds:
+        lines += ["## 折叠屏箱号（内屏 / 外屏）", "",
+                  "> 折叠屏一块机器两块屏，箱号标签会同时标出内屏和外屏；"
+                  "搜索时命中哪块屏，结果里会标「内屏匹配」或「外屏匹配」。", ""]
+        for bid, e in folds:
+            lines.append(f"- **{bid}**：内屏 {e['inner']}″ / 外屏 {e['outer']}″"
+                         f"（{'可信' if e.get('ok') else '数据不足'}，"
+                         f"型号 {e['known']}/{e['total']}）")
         lines.append("")
 
     if no_cover:
