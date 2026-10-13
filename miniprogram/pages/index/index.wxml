@@ -84,7 +84,7 @@
             <text class="tag-sub" wx:if="{{card.isSub}}">可替代</text>
             <text class="tag-size size-{{card.levelKey}}" wx:if="{{card.isSize}}">{{card.levelLabel}}</text>
             <text class="tag-kind kind-{{card.kindKey}}" wx:if="{{card.kindLabel}}">{{card.kindLabel}}</text>
-            <text class="card-size {{card.sizeLines.length > 1 ? 'fold' : ''}}"
+            <text class="box-size {{card.sizeLines.length > 1 ? 'fold' : ''}}"
                   wx:if="{{card.sizeText}}">{{card.sizeText}}</text>
           </view>
 

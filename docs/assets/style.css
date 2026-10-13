@@ -623,8 +623,10 @@ mark {
 }
 
 /* ---------------------------------------------------------------- 屏幕尺寸相关 */
-/* 卡片右上角的屏幕尺寸标签：放在标题行最右侧，不压在箱号上 */
-.card-size {
+/* 卡片右上角的屏幕尺寸标签：放在标题行最右侧，不压在箱号上。
+   类名特意避开卡片自己的类（之前叫 .card-size，和尺寸模式卡片的修饰类撞了，
+   导致整张卡片被套上标签样式）。 */
+.box-size {
   flex: none;
   margin-left: auto;
   padding: 1px 7px;
@@ -638,7 +640,7 @@ mark {
 }
 
 /* 折叠屏写「内 / 外」两段，换个颜色区分 */
-.card-size.fold {
+.box-size.fold {
   background: #f3eeff;
   border-color: #ded0ff;
   color: #6a3ecb;

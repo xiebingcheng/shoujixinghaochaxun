@@ -484,7 +484,7 @@
 
 /* ---------------- 屏幕尺寸 */
 /* 卡片右上角的尺寸标签：放在标题行最右侧，不压在箱号上 */
-.card-size {
+.box-size {
   margin-left: auto;
   padding: 2rpx 12rpx;
   border-radius: 999rpx;
@@ -496,7 +496,7 @@
 }
 
 /* 折叠屏写「内 / 外」两段，换个颜色区分 */
-.card-size.fold {
+.box-size.fold {
   background: #f3eeff;
   border-color: #ded0ff;
   color: #6a3ecb;

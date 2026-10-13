@@ -149,7 +149,7 @@
       text = wide ? `${oneInch(lo)}-${oneInch(hi)}″` : `${oneInch(info.inch)}″`;
       title = `这一箱的屏幕约 ${text}（按箱内 ${info.known}/${info.total} 个型号统计）`;
     }
-    return `<span class="card-size${fold ? " fold" : ""}" title="${esc(title)}">` +
+    return `<span class="box-size${fold ? " fold" : ""}" title="${esc(title)}">` +
       `${esc(text)}</span>`;
   }
 
@@ -494,7 +494,7 @@
       }).join("") + "</ul>"
       : closest;
     return `
-      <article class="card card-size${open ? " card-open" : ""}" data-id="${esc(box.id)}">
+      <article class="card card-bysize${open ? " card-open" : ""}" data-id="${esc(box.id)}">
         ${badge(box, true, true)}
         <div class="card-body">
           <div class="card-head">
