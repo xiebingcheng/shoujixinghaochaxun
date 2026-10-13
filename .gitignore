@@ -4,3 +4,6 @@ __pycache__/
 node_modules/
 .DS_Store
 Thumbs.db
+
+# tools/lookup_sizes.py 的断点续跑缓存（正式结果在 reports/尺寸查询草稿.*）
+reports/_lookup_cache.json

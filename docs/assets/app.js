@@ -3,6 +3,7 @@
   "use strict";
 
   const $ = (sel) => document.querySelector(sel);
+  const modesEl = $("#modes");
   const tabsEl = $("#tabs");
   const resultsEl = $("#results");
   const summaryEl = $("#summary");
@@ -12,17 +13,32 @@
   const toastEl = $("#toast");
   const headerEl = $("#header");
   const toTopEl = $("#to-top");
+  const subEl = $(".app-sub");
 
   const PREFIX_LABEL = { S: "S 开头", L: "L 开头", Y: "Y 开头" };
   const EXAMPLES = ["Mate30Pro", "X60Pro", "苹果13", "红米K80", "S01"];
   const FUZZY_LIMIT = 40;
   const SUB_LIMIT = 8;
+  const SIZE_MATCH_LIMIT = 40;
+  const SIZE_NEAR = 0.05;    // 差 ≤ 0.05 英寸算「尺寸一致」
+  const SIZE_CLOSE = 0.15;   // 差 ≤ 0.15 英寸算「尺寸接近」
+  const SIZE_MAX = 0.30;     // 差 > 0.30 英寸就不列出来
+  const PLACEHOLDER = {
+    model: "手机型号或箱号，如 Mate30Pro、S01",
+    size: "手机型号或屏幕尺寸，如 红米10A、6.5",
+  };
+  const SUB_TITLE = {
+    model: "输入手机型号或箱号，查出所在箱子",
+    size: "按屏幕尺寸找箱号：输型号或直接输尺寸，如 6.5",
+  };
 
   const state = {
     index: null,
     boxById: null,
+    sizes: null,
     suggestList: [],
     prefix: "ALL",
+    mode: "model",
     result: null,
     expanded: new Set(),
   };
@@ -104,15 +120,39 @@
     return { text, others: all.filter((t) => t !== text) };
   }
 
+  /** 6.50 -> 6.5，6.53 -> 6.53 */
+  function fmtInch(n) {
+    return Number(n).toFixed(2).replace(/0$/, "").replace(/\.$/, "");
+  }
+
+  /** 箱号上只保留 1 位小数：6.47 -> 6.5，避免标签太长看不清楚 */
+  function oneInch(n) {
+    return (Math.round(Number(n) * 10) / 10).toFixed(1);
+  }
+
+  /** 箱号右上角的屏幕尺寸标签；没有可靠尺寸时不显示 */
+  function sizeChip(box) {
+    const info = state.sizes && state.sizes.boxes && state.sizes.boxes[box.id];
+    if (!info || !info.ok || !info.inch) return "";
+    const [lo, hi] = info.range || [];
+    const text = hi !== undefined &&
+      Math.round(hi * 10) - Math.round(lo * 10) >= 2
+      ? `${oneInch(lo)}-${oneInch(hi)}″`
+      : `${oneInch(info.inch)}″`;
+    const title = `这一箱的屏幕约 ${text}（按箱内 ${info.known}/${info.total} 个型号统计）`;
+    return `<span class="badge-size" title="${esc(title)}">${esc(text)}</span>`;
+  }
+
   /** small：浏览列表里的小号徽标；toggle：箱号变成可点开的按钮 */
   function badge(box, small, toggle) {
     const size = small ? " badge-sm" : "";
     const cls = `badge badge-${box.prefix.toLowerCase()}${size}`;
-    if (!toggle) return `<div class="${cls}">${esc(box.id)}</div>`;
+    const chip = sizeChip(box);
+    if (!toggle) return `<div class="${cls}">${esc(box.id)}${chip}</div>`;
     const open = state.expanded.has(box.id);
     return `<button class="${cls} badge-btn" type="button" data-toggle="${esc(box.id)}" ` +
       `aria-expanded="${open}" aria-label="展开 ${esc(box.id)} 箱内的机型" ` +
-      `title="点开查看 ${esc(box.id)} 箱里的机型">${esc(box.id)}</button>`;
+      `title="点开查看 ${esc(box.id)} 箱里的机型">${esc(box.id)}${chip}</button>`;
   }
 
   /** 卡片底部：左边一句说明，右边「收起 / 复制箱号」按钮 */
@@ -300,6 +340,207 @@
     resultsEl.innerHTML = html;
   }
 
+  // ------------------------------------------------------- 尺寸查箱号（按屏幕尺寸找箱号）
+  /** 输入像 6.5 / 6.5寸 / 6.5英寸 就当成尺寸；否则当成型号 */
+  function parseSizeQuery(text) {
+    const s = String(text).trim().replace(/英寸|寸|"|″/g, "").trim();
+    if (!/^\d(?:\.\d{1,2})?$/.test(s)) return null;
+    const n = parseFloat(s);
+    return n >= 4 && n <= 9 ? n : null;
+  }
+
+  function modelSize(key) {
+    if (!state.sizes || !state.sizes.models) return null;
+    const v = state.sizes.models[key];
+    return typeof v === "number" ? v : null;
+  }
+
+  /**
+   * 查一个型号的屏幕尺寸：先精确查表，查不到就复用搜索的模糊/别名匹配兜底
+   * （尺寸表里存的是「华为P40」，用户只输「P40」时也要能查到）。
+   * 返回 { size, model }：model 是兜底时匹配到的机型名，精确命中时为 null。
+   */
+  function resolveSize(raw) {
+    const direct = modelSize(window.BoxSearch.norm(raw));
+    if (direct !== null) return { size: direct, model: null };
+    const res = window.BoxSearch.search(state.index, raw);
+    let best = null;
+    for (const [pool, penalty] of [[res.exact, 0], [res.fuzzy, 1000]]) {
+      for (const r of pool) {
+        for (const h of r.hits) {
+          const s = modelSize(h.m.k);
+          if (s === null) continue;
+          const rank = h.s - penalty;
+          if (!best || rank > best.rank) best = { rank, size: s, model: h.m.t };
+        }
+      }
+    }
+    return best;
+  }
+
+  /** 尺寸模式下所有箱号里出现过的尺寸档（用于快捷入口） */
+  function quickSizes() {
+    const boxes = (state.sizes && state.sizes.boxes) || {};
+    const uniq = new Set();
+    for (const id of Object.keys(boxes)) {
+      const e = boxes[id];
+      if (e.ok && e.inch) uniq.add(Math.round(e.inch * 10) / 10);
+    }
+    return Array.from(uniq).sort((a, b) => a - b);
+  }
+
+  function sizeExamplesHTML() {
+    const btns = quickSizes().slice(0, 8).map((s) =>
+      `<button class="example" type="button" data-size="${s.toFixed(1)}">${esc(oneInch(s))}″</button>`
+    ).join("");
+    const models = ["红米10A", "苹果13"].map((e) =>
+      `<button class="example" type="button" data-example="${esc(e)}">${esc(e)}</button>`
+    ).join("");
+    return btns + models;
+  }
+
+  function sizeEmptyHTML(title, hint) {
+    return `
+      <div class="empty">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14"/></svg>
+        <p>${esc(title)}</p>
+        <p class="hint">${esc(hint)}</p>
+        <div class="examples">${sizeExamplesHTML()}</div>
+      </div>`;
+  }
+
+  function sizeLevel(d) {
+    if (d <= SIZE_NEAR) return { key: "same", label: "尺寸一致" };
+    if (d <= SIZE_CLOSE) return { key: "close", label: "尺寸接近" };
+    return { key: "fit", label: "勉强候选" };
+  }
+
+  /** 每个箱子里「离目标尺寸最近」的那个型号 */
+  function nearestBySize(size) {
+    const list = [];
+    for (const box of state.index.boxes) {
+      if (state.prefix !== "ALL" && box.prefix !== state.prefix) continue;
+      let best = null;
+      for (const m of box.models) {
+        const s = modelSize(m.k);
+        if (s === null) continue;
+        const d = Math.abs(s - size);
+        if (!best || d < best.d) best = { model: m, inch: s, d };
+      }
+      if (best && best.d <= SIZE_MAX) list.push({ box, ...best });
+    }
+    list.sort((a, b) => a.d - b.d || (a.box.id < b.box.id ? -1 : 1));
+    return list;
+  }
+
+  function sizeCard(item) {
+    const box = item.box;
+    const open = state.expanded.has(box.id);
+    const level = sizeLevel(item.d);
+    const name = box.name ? esc(box.name) : "未命名箱";
+    const diff = item.d < 0.005 ? "尺寸相同" : `差 ${fmtInch(item.d)}″`;
+    const closest = '<div class="size-hit">箱内最接近：<b>' + esc(item.model.t) + "</b> · " +
+      esc(fmtInch(item.inch)) + '″<span class="size-diff">' + esc(diff) + "</span></div>";
+    const body = open
+      ? '<ul class="hits">' + box.models.map((m) => {
+        const s = modelSize(m.k);
+        const tag = s === null ? "" : ` <span class="size-tag">${esc(fmtInch(s))}″</span>`;
+        const alt = (m.alt || []).length
+          ? ` <span class="alt">（另一写法：${esc(m.alt.join("、"))}）</span>`
+          : "";
+        return `<li>${esc(m.t)}${tag}${alt}</li>`;
+      }).join("") + "</ul>"
+      : closest;
+    return `
+      <article class="card card-size${open ? " card-open" : ""}" data-id="${esc(box.id)}">
+        ${badge(box, true, true)}
+        <div class="card-body">
+          <div class="card-head">
+            <span class="card-name">${name}</span>
+            <span class="tag size-${level.key}">${level.label}</span>
+          </div>
+          ${body}
+          ${footHTML(box, open ? undefined : "点箱号展开箱内机型", open && box.models.length > 12)}
+        </div>
+      </article>`;
+  }
+
+  function renderSizeIntro() {
+    const boxes = (state.sizes && state.sizes.boxes) || {};
+    const ids = Object.keys(boxes).filter((id) => boxes[id].ok && boxes[id].inch);
+    summaryEl.innerHTML = state.sizes
+      ? `已标出屏幕尺寸的箱号：<b>${ids.length}</b> / ${state.index.boxes.length} 个`
+      : "尺寸数据加载失败，暂时只能用「型号查箱号」";
+    resultsEl.innerHTML = `
+      <div class="empty">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14"/></svg>
+        <p>输手机型号，或直接输屏幕尺寸</p>
+        <p class="hint">输型号（如 <b>红米10A</b>）会先查它的屏幕尺寸，再列出尺寸相近的箱号；
+          也可以直接输 <b>6.5</b>。箱号右上角就是这一箱的屏幕尺寸。</p>
+        <div class="examples">${sizeExamplesHTML()}</div>
+      </div>`;
+  }
+
+  function renderSizeSearch() {
+    const raw = inputEl.value.trim();
+    if (!raw) {
+      renderSizeIntro();
+      return;
+    }
+    let size = parseSizeQuery(raw);
+    let head;
+    if (size === null) {
+      const hit = resolveSize(raw);
+      if (!hit) {
+        summaryEl.innerHTML = `没有「${esc(raw)}」的屏幕尺寸数据`;
+        resultsEl.innerHTML = sizeEmptyHTML(
+          "查不到这个型号的屏幕尺寸",
+          "换种写法再试（如 红米10A、苹果13），或直接输尺寸，如 6.5"
+        );
+        return;
+      }
+      size = hit.size;
+      head = hit.model
+        ? `「${esc(raw)}」匹配到「${esc(hit.model)}」，屏幕约 <b>${esc(fmtInch(size))}″</b>`
+        : `「${esc(raw)}」屏幕约 <b>${esc(fmtInch(size))}″</b>`;
+    } else {
+      head = `屏幕尺寸 <b>${esc(fmtInch(size))}″</b>`;
+    }
+
+    const list = nearestBySize(size);
+    if (!list.length) {
+      summaryEl.innerHTML = head + "，没找到尺寸相近的箱号";
+      resultsEl.innerHTML = sizeEmptyHTML(
+        "没有尺寸相近的箱号",
+        "换个尺寸再试，比如 6.1、6.5、6.7；或换个型号写法"
+      );
+      return;
+    }
+    const same = list.filter((x) => x.d <= SIZE_NEAR);
+    const close = list.filter((x) => x.d > SIZE_NEAR && x.d <= SIZE_CLOSE);
+    const fit = list.filter((x) => x.d > SIZE_CLOSE);
+    const groups = [
+      ["尺寸一致", same, SIZE_MATCH_LIMIT],
+      ["尺寸接近", close, SIZE_MATCH_LIMIT],
+      ["勉强候选（差得较多，需现场比对）", fit, 10],
+    ];
+    summaryEl.innerHTML = head + `，找到 <b>${list.length}</b> 个尺寸相近的箱号` +
+      `（一致 ${same.length} / 接近 ${close.length} / 勉强 ${fit.length}）`;
+
+    let html = '<p class="notice">屏幕尺寸相近 ≠ 可以通用。请现场比对屏幕尺寸、比例、排线、开孔后再决定。</p>';
+    for (const [title, items, limit] of groups) {
+      if (!items.length) continue;
+      const shownItems = items.slice(0, limit);
+      html += `<h2 class="group-title">${title}（${items.length}）</h2>`;
+      html += shownItems.map(sizeCard).join("");
+      if (items.length > shownItems.length) {
+        html += `<p class="list-note">这一组还有 ${items.length - shownItems.length} 个，` +
+          `把尺寸写得更接近一点可以缩小范围。</p>`;
+      }
+    }
+    resultsEl.innerHTML = html;
+  }
+
   function renderSearch() {
     const res = state.result;
     const tokens = String(inputEl.value).trim().split(/\s+/).filter(Boolean);
@@ -379,6 +620,10 @@
 
   function render() {
     if (!state.index) return;
+    if (state.mode === "size") {
+      renderSizeSearch();
+      return;
+    }
     if (state.result) renderSearch();
     else renderBrowse();
   }
@@ -397,6 +642,11 @@
       closeSuggest();
       return;
     }
+    // 尺寸模式下输的是「6.5」这类尺寸，不需要机型联想
+    if (state.mode === "size" && parseSizeQuery(value) !== null) {
+      closeSuggest();
+      return;
+    }
     const res = window.BoxSearch.suggest(state.suggestList, value, 30);
     if (!res.items.length) {
       closeSuggest();
@@ -406,8 +656,10 @@
     activeIndex = -1;
     const tokens = value.split(/\s+/).filter(Boolean);
     suggestEl.innerHTML = res.items.map((it, i) => {
-      const codeList = it.boxes.slice(0, 3).join("·") +
-        (it.boxes.length > 3 ? ` 等${it.boxes.length}` : "");
+      const inch = state.mode === "size" ? modelSize(it.id) : null;
+      const codeList = inch !== null
+        ? `${fmtInch(inch)}″`
+        : it.boxes.slice(0, 3).join("·") + (it.boxes.length > 3 ? ` 等${it.boxes.length}` : "");
       const alt = it.alt.length ? ` <span class="alt">（${esc(it.alt.join("、"))}）</span>` : "";
       const tag = it.type === "name" ? '<span class="s-tag">箱名</span>' : "";
       return `<div class="s-item" role="option" data-i="${i}">` +
@@ -435,15 +687,38 @@
   function runSearch(updateUrl) {
     const query = inputEl.value.trim();
     state.expanded.clear();
-    state.result = query ? window.BoxSearch.search(state.index, query) : null;
+    state.result = state.mode === "model" && query
+      ? window.BoxSearch.search(state.index, query)
+      : null;
     render();
     if (updateUrl !== false) {
       const url = new URL(window.location.href);
       if (query) url.searchParams.set("q", query);
       else url.searchParams.delete("q");
+      if (state.mode === "size") url.searchParams.set("mode", "size");
+      else url.searchParams.delete("mode");
       history.replaceState(null, "", url);
     }
   }
+
+  /** 切换「型号查箱号 / 尺寸查箱号」 */
+  function setMode(mode) {
+    if (state.mode === mode) return;
+    state.mode = mode;
+    state.expanded.clear();
+    for (const b of modesEl.querySelectorAll(".mode")) {
+      b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+    }
+    inputEl.placeholder = PLACEHOLDER[mode];
+    if (subEl) subEl.textContent = SUB_TITLE[mode];
+    closeSuggest();
+    runSearch();
+  }
+
+  modesEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".mode");
+    if (btn) setMode(btn.dataset.mode);
+  });
 
   inputEl.addEventListener("input", () => {
     renderSuggest();
@@ -551,6 +826,13 @@
       runSearch();
       return;
     }
+    const sizeBtn = e.target.closest("[data-size]");
+    if (sizeBtn) {
+      inputEl.value = sizeBtn.dataset.size;
+      closeSuggest();
+      runSearch();
+      return;
+    }
     // 点箱号（或卡片空白处）展开 / 收起，看到箱号里到底有哪些机型
     const card = e.target.closest(".card");
     if (card && card.dataset.id) toggleBox(card.dataset.id);
@@ -629,13 +911,28 @@
     } catch (err) {
       console.warn("替代关系数据加载失败，跳过", err);
     }
+    // 屏幕尺寸数据也是单独一个文件，缺失时整站照常可用（只是箱号不标尺寸）
+    try {
+      const szResp = await fetch("data/sizes.json", { cache: "no-cache" });
+      if (szResp.ok) state.sizes = await szResp.json();
+      else console.warn("屏幕尺寸数据加载失败：HTTP " + szResp.status);
+    } catch (err) {
+      console.warn("屏幕尺寸数据加载失败，跳过", err);
+    }
     state.index = window.BoxSearch.makeIndex(data, subs);
     state.boxById = new Map(state.index.boxes.map((b) => [b.id, b]));
     state.suggestList = window.BoxSearch.buildSuggestions(state.index.boxes);
     buildTabs();
     // 标签栏建好之后头部才是最终高度，这时量一次留白
     syncHeaderSpace();
-    const initial = new URLSearchParams(location.search).get("q");
+    const params = new URLSearchParams(location.search);
+    state.mode = params.get("mode") === "size" ? "size" : "model";
+    for (const b of modesEl.querySelectorAll(".mode")) {
+      b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode));
+    }
+    inputEl.placeholder = PLACEHOLDER[state.mode];
+    if (subEl) subEl.textContent = SUB_TITLE[state.mode];
+    const initial = params.get("q");
     if (initial) inputEl.value = initial;
     runSearch(false);
     const c = state.index.counts;

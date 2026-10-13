@@ -8,6 +8,8 @@
 
 纯静态网站，可直接部署到 GitHub Pages，数据存成 JSON 文件。
 
+另外还有一个功能一致的**微信小程序版**，见 [miniprogram/](miniprogram/)。
+
 ## 目录结构
 
 ```
@@ -19,13 +21,21 @@ docs/                      ← 网站本体（GitHub Pages 发布这个目录）
   assets/favicon.svg
   data/boxes.json          ← 由脚本从 6 个表格生成的查询数据
   data/substitutes.json    ← 箱号替代关系（手工编辑，不会被脚本覆盖）
+  data/model-sizes.json    ← 手机型号 → 屏幕尺寸（英寸），手工编辑
+  data/sizes.json          ← 由脚本生成：型号尺寸表 + 每个箱号的代表尺寸
   manifest.webmanifest     ← 可“添加到主屏幕”
   sw.js                    ← 离线缓存（首次打开后无网也能查）
 资料/                       ← 原始表格（两人各 3 份，共 6 份）
 tools/build_data.py        ← 把表格生成 JSON + 数据核对报告
+tools/gen_model_sizes.py   ← 生成「型号 → 屏幕尺寸」初版（批量补充用）
+tools/build_sizes.py       ← 算出每个箱号的代表尺寸 + 覆盖率报告
+tools/lookup_sizes.py      ← 用 opencli 的 Google 搜索批量查缺的屏幕尺寸（产出草稿）
 tools/check_search.js      ← 搜索逻辑自测
+tools/check_size.js        ← 尺寸查箱号功能自测（需要先起本地服务）
 tools/inspect_data.py      ← 查看表格结构
 reports/数据核对报告.md      ← d 版 / q 版 两份数据的差异清单
+reports/屏幕尺寸覆盖报告.md  ← 屏幕尺寸覆盖情况 / 待补清单
+reports/尺寸查询草稿.md      ← 搜索查到的尺寸草稿（人工核对用）
 ```
 
 ## 本地预览
@@ -114,6 +124,22 @@ git push -u origin main
 
 推送完成后，同样在 **Settings → Pages** 里选 `main` + `/docs`。
 
+## 微信小程序版
+
+网页版继续用 GitHub Pages 部署，两者互不影响；小程序版放在 `miniprogram/`，
+功能和网页版一致（搜索、联想、S/L/Y 筛选、展开箱内机型、复制箱号、可替代箱号）。
+
+要注意：小程序的请求域名必须 HTTPS 且已 ICP 备案并配进微信后台白名单，
+`github.io` 配不进去，**小程序不能直接读 GitHub Pages 上的 JSON**。
+所以数据是打进小程序代码包的（约 165 KB，离线可用），由脚本从 `docs/data/` 同步：
+
+```powershell
+node tools/build_mp_data.js    # 同步数据 + 搜索逻辑到 miniprogram/
+node tools/check_mp.js         # 小程序版自测
+```
+
+详细的上手 / 发布步骤见 [miniprogram/README.md](miniprogram/README.md)。
+
 ## 搜索是怎么匹配的
 
 - 边打边联想：输入 `i` → 列出 `iPhone11`、`iQOO13`… 点一条即可查；
@@ -127,3 +153,63 @@ git push -u origin main
   的全部机型；要复制箱号用卡片右下角的「复制箱号」按钮；
 - 命中箱号（或箱内机型）时，会额外列出该箱的「可替代箱号」卡片（带「可替代」标记），
   卡片底部也有一行文字链接，点一下即可跳到那个箱号。
+
+## 尺寸查箱号（按屏幕尺寸找替代箱号）
+
+顶部有两个选项卡：**型号查箱号**（原来的功能）和**尺寸查箱号**。
+
+**尺寸查箱号**解决的是「这个型号没覆盖 / 箱子里没货」的情况：输手机型号会先查它的
+屏幕尺寸，再按尺寸远近列出可以现场试一试的箱号；也可以直接输尺寸（如 `6.5`）。
+结果分三档：
+
+- **尺寸一致**：差 ≤ 0.05 英寸；
+- **尺寸接近**：差 ≤ 0.15 英寸；
+- **勉强候选**：差 ≤ 0.30 英寸。
+
+> 屏幕尺寸相近 **≠** 可以通用。结果只是把翻找范围从 100 多个箱号缩到几个，
+> 最终一定要现场比对屏幕尺寸、比例、排线、开孔。页面上也有这句提示。
+
+每个箱号右上角的小标签就是这一箱的屏幕尺寸（如 `6.5″`），
+型号查箱号的结果里同样会显示。
+
+### 箱号尺寸是怎么算出来的
+
+按「抽箱内 60~80% 的机型就能代表这一箱」的思路，由 `tools/build_sizes.py` 计算：
+
+1. 只统计有尺寸数据的箱内型号；
+2. 覆盖率（有尺寸的型号占比）低于 **60%** → 不给结论；
+3. 把尺寸按 0.1 英寸滑动分档，取型号最多的那一档；
+4. 这一档的占比低于 **60%** → 说明箱内尺寸不统一，也不给结论。
+
+目前 129 个箱号里 **121 个**能算出尺寸，箱内型号的尺寸覆盖率 **99.3%**。
+没算出的 8 个是：7 个箱内型号尺寸本来就跨得大（含 L07/L09/L14 这类上千条型号的大杂箱），
+1 个折叠屏箱子（Y16，内外屏尺寸不同）。明细见 `reports/屏幕尺寸覆盖报告.md`。
+
+### 维护屏幕尺寸数据
+
+1. 编辑 `docs/data/model-sizes.json` 的 `models`：键写型号原文，值写英寸，
+   例如 `"红米15": 6.9`。改对了就会覆盖自动生成的初版数值。
+2. 运行：
+
+   ```powershell
+   python tools/build_sizes.py      # 重新生成 docs/data/sizes.json + 覆盖率报告
+   node tools/build_mp_data.js      # 同步到小程序
+   ```
+
+`reports/屏幕尺寸覆盖报告.md` 会列出：哪些型号还没有尺寸、哪些箱号尺寸不统一
+（多半是箱内型号数据本身有问题）、哪些型号被写成了两个不同的尺寸。
+
+### 新机型上市后怎么补尺寸
+
+```powershell
+python tools/lookup_sizes.py            # 用 opencli 的 Google 搜索把缺的型号查一遍
+python tools/lookup_sizes.py --refresh  # 忽略缓存重查
+```
+
+它会输出 `reports/尺寸查询草稿.json` / `.md`，每条带分数和依据（官网/参数页会加分）。
+**草稿不会自动写进正式数据**——搜索结果里混着「折叠屏外屏尺寸、上代机型、爆料数字」
+这类噪声，必须人工过一眼再合并进 `model-sizes.json`。
+
+尺寸表目前有两个来源：`tools/gen_model_sizes.py` 按机型系列规则生成的初版，
+以及 `tools/lookup_sizes.py` 搜索补的。**两种都还没逐条人工核对**，
+数值仅供参考，建议照着报告抽几条验一下。
